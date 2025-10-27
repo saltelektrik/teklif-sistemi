@@ -17,20 +17,24 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 DATA_FILE = "data/requests.json"
 os.makedirs("data", exist_ok=True)
 
-# ✅ Fonksiyon: JSON’dan veriyi yükle
+# ✅ JSON yükleme / kaydetme
 def load_requests():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return []
 
-# ✅ Fonksiyon: JSON’a kaydet
 def save_requests():
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(requests_data, f, ensure_ascii=False, indent=2)
 
-# Başlangıçta veriyi yükle
 requests_data = load_requests()
+# ✅ Eksik alanları tamamla (eski kayıtlar için güvenlik)
+for r in requests_data:
+    if "messages" not in r:
+        r["messages"] = []
+    if "offer_messages" not in r:
+        r["offer_messages"] = []
 
 # 👥 Kullanıcılar
 users = [
@@ -50,6 +54,9 @@ def get_current_user():
     elif "admin_email" in session:
         return next((u for u in users if u["email"] == session["admin_email"]), None)
     return None
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def login_required(f):
     @wraps(f)
@@ -133,6 +140,7 @@ def dashboard():
     user_requests = [r for r in requests_data if r["email"] == user["email"]]
     return render_template("client/dashboard.html", user=user, requests=user_requests)
 
+# 📩 Talep gönder
 @app.route("/submit", methods=["POST"])
 @login_required
 def submit_request():
@@ -147,9 +155,11 @@ def submit_request():
         "name": user["name"],
         "email": user["email"],
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "messages": [
+        # İKİ AYRI HAT
+        "request_messages": [
             {"sender": "müşteri", "sender_name": user["name"], "text": message, "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         ],
+        "offer_messages": [],
         "status": "new",
         "products": [{"desc": d, "code": c, "brand": b, "qty": q} for d, c, b, q in zip(desc, code, brand, qty)],
     }
@@ -162,11 +172,15 @@ def submit_request():
 @app.route("/status/<int:req_id>", methods=["GET", "POST"])
 @login_required
 def status(req_id):
-    user = get_current_user()  # ✅ eklendi (bazı eski sürümlerde eksikti)
+    user = get_current_user()
     req = next((r for r in requests_data if r["id"] == req_id), None)
     if not req:
         flash("Talep bulunamadı.")
         return redirect(url_for("dashboard"))
+
+    # Eski kayıt uyumu
+    req.setdefault("request_messages", req.pop("messages", []))
+    req.setdefault("offer_messages", [])
 
     if request.method == "POST":
         text = request.form.get("message", "").strip()
@@ -179,7 +193,7 @@ def status(req_id):
             file_path = f"/static/uploads/{filename}"
 
         if text or file_path:
-            req["messages"].append({
+            req["request_messages"].append({
                 "sender": "müşteri",
                 "sender_name": user["name"],
                 "text": text,
@@ -189,9 +203,7 @@ def status(req_id):
             save_requests()
         return redirect(url_for("status", req_id=req_id))
 
-    # 👇 burada user'ı da template'e gönderiyoruz
     return render_template("client/status.html", req=req, user=user)
-
 
 # ⚙️ Yönetici Paneli
 @app.route("/admin/dashboard")
@@ -199,16 +211,6 @@ def status(req_id):
 def admin_dashboard():
     user = get_current_user()
     return render_template("admin/dashboard.html", requests=requests_data, user=user, users=users)
-
-@app.route("/admin/assign/<int:req_id>", methods=["POST"])
-@admin_required
-def assign_admin(req_id):
-    admin_name = request.form.get("admin_name")
-    req = next((r for r in requests_data if r["id"] == req_id), None)
-    if req:
-        req["assigned_admin"] = admin_name
-        save_requests()  # ✅ kalıcı kaydet
-    return ("", 204)
 
 @app.route("/admin/request/<int:req_id>")
 @admin_required
@@ -220,66 +222,79 @@ def admin_request_detail(req_id):
         return redirect(url_for("admin_dashboard"))
     return render_template("admin/request_detail.html", req=req, user=user)
 
+# ===================== 💬 Teklif Mesajlaşma (Yeni) =====================
 
-@app.route("/admin/save_offer/<int:req_id>", methods=["POST"])
-@admin_required
-def admin_save_offer(req_id):
+# 💬 Müşteri tarafı teklif mesajlaşması
+@app.route("/offer_chat/<int:req_id>", methods=["GET", "POST"])
+@login_required
+def offer_chat(req_id):
     user = get_current_user()
     req = next((r for r in requests_data if r["id"] == req_id), None)
     if not req:
         flash("Talep bulunamadı.")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("dashboard"))
 
-    prices = request.form.getlist("price[]")
-    try:
-        prices = [float(p) if p else 0 for p in prices]
-    except ValueError:
-        prices = [0 for _ in prices]
-
-    # Sabit %20 KDV
-    kdv_orani = 0.20
-    kdv_dahil = [round(p + (p * kdv_orani), 2) for p in prices]
-    qtys = [float(q) if q else 0 for q in req["qty"]]
-    ara_toplamlar = [round(k * q, 2) for k, q in zip(kdv_dahil, qtys)]
-
-    toplam = round(sum(ara_toplamlar), 2)
-
-    req["prices"] = prices
-    req["kdv_dahil"] = kdv_dahil
-    req["ara_toplamlar"] = ara_toplamlar
-    req["toplam"] = toplam
-    req["status"] = "Teklif Hazır"
-    req["updated_by"] = user["name"]
-
-    save_data()  # JSON veya DB kaydı
-    flash("Teklif başarıyla kaydedildi.")
-    return redirect(url_for("admin_request_detail", req_id=req_id))
-
-@app.route("/admin/message/<int:req_id>", methods=["POST"])
-@admin_required
-def admin_message(req_id):
-    user = get_current_user()
-    req = next((r for r in requests_data if r["id"] == req_id), None)
-    if req:
-        msg_text = request.form.get("message", "").strip()
+    if request.method == "POST":
+        text = request.form.get("message", "").strip()
         file = request.files.get("file")
         file_path = None
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
             file_path = f"/static/uploads/{filename}"
-        if msg_text or file_path:
-            req["messages"].append({
-                "sender": "yönetici",
+
+        if text or file_path:
+            if "offer_messages" not in req:
+                req["offer_messages"] = []
+            req["offer_messages"].append({
+                "sender": "müşteri",
                 "sender_name": user["name"],
-                "text": msg_text,
+                "text": text,
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "file": file_path
             })
-            req["status"] = "replied"
             save_requests()
-    return redirect(url_for("admin_request_detail", req_id=req_id))
+        return redirect(url_for("offer_chat", req_id=req_id))
 
+    return render_template("client/offer_chat.html", req=req, user=user)
+
+
+# 💬 Admin tarafı teklif mesajlaşması
+@app.route("/admin/offer_chat/<int:req_id>", methods=["GET", "POST"])
+@admin_required
+def admin_offer_chat(req_id):
+    user = get_current_user()
+    req = next((r for r in requests_data if r["id"] == req_id), None)
+    if not req:
+        flash("Talep bulunamadı.")
+        return redirect(url_for("admin_dashboard"))
+
+    if request.method == "POST":
+        text = request.form.get("message", "").strip()
+        file = request.files.get("file")
+        file_path = None
+
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+            file_path = f"/static/uploads/{filename}"
+
+        if text or file_path:
+            if "offer_messages" not in req:
+                req["offer_messages"] = []
+            req["offer_messages"].append({
+                "sender": "yönetici",
+                "sender_name": user["name"],
+                "text": text,
+                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "file": file_path
+            })
+            save_requests()
+
+        return redirect(url_for("admin_offer_chat", req_id=req_id))
+
+    return render_template("admin/offer_chat.html", req=req, user=user)
+# 🔒 Talep kapatma
 @app.route("/admin/close/<int:req_id>")
 @admin_required
 def admin_close(req_id):
@@ -322,4 +337,4 @@ def admin_login():
     return render_template("admin/login.html")
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)

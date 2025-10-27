@@ -86,6 +86,45 @@ function addProductRow() {
 <!-- Geçmiş Talepler -->
 <div class="bg-white rounded-xl shadow-sm p-6">
   <h3 class="text-lg font-semibold text-gray-800 mb-4">Geçmiş Taleplerim</h3>
-  ...
+
+  {% if requests %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm text-left text-gray-700 border border-gray-100 rounded-lg">
+      <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+        <tr>
+          <th class="px-3 py-2">#</th>
+          <th class="px-3 py-2">Tarih</th>
+          <th class="px-3 py-2">Durum</th>
+          <th class="px-3 py-2">İşlem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in requests %}
+        <tr class="border-t hover:bg-gray-50">
+          <td class="px-3 py-2">{{ r.id }}</td>
+          <td class="px-3 py-2">{{ r.timestamp }}</td>
+          <td class="px-3 py-2">
+            {% if r.status == 'new' %}
+              <span class="text-blue-600 font-medium">Yeni</span>
+            {% elif r.status == 'Teklif Hazır' %}
+              <span class="text-green-600 font-medium">Teklif Hazır</span>
+            {% elif r.status == 'closed' %}
+              <span class="text-gray-500 font-medium">Kapandı</span>
+            {% else %}
+              <span class="text-yellow-600 font-medium">{{ r.status }}</span>
+            {% endif %}
+          </td>
+          <td class="px-3 py-2">
+            <a href="/status/{{ r.id }}" class="text-blue-600 hover:underline text-sm">Görüntüle</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-gray-500 text-sm">Henüz talep bulunmuyor.</p>
+  {% endif %}
 </div>
+
 {% endblock %}

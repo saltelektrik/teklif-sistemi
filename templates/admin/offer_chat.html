@@ -1,0 +1,35 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Teklif Mesajları (Admin){% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-gray-800 mb-6">💬 Teklif Mesajlaşması – #{{ req.id }}</h1>
+
+<div class="bg-white rounded-xl shadow p-6">
+  <div class="space-y-2 mb-4">
+    {% set msgs = req.offer_messages if req.offer_messages is defined else [] %}
+    {% for m in msgs %}
+      <div class="rounded px-4 py-2 {% if m.sender=='yönetici' %}bg-blue-50{% else %}bg-gray-50{% endif %}">
+        <div class="text-xs text-gray-500 flex justify-between">
+          <span>{{ m.sender_name }}</span>
+          <span>{{ m.time }}</span>
+        </div>
+        <div class="text-sm text-gray-800 mt-1">{{ m.text }}</div>
+        {% if m.file %}
+          <div class="mt-1"><a href="{{ m.file }}" target="_blank" class="text-blue-600 underline text-sm">Ek dosya</a></div>
+        {% endif %}
+      </div>
+    {% else %}
+      <p class="text-gray-500 text-sm">Henüz mesaj yok.</p>
+    {% endfor %}
+  </div>
+
+  <form action="" method="POST" enctype="multipart/form-data" class="space-y-3">
+    <textarea name="message" rows="3" class="w-full border rounded-lg px-3 py-2" placeholder="Yanıtınız..."></textarea>
+    <div>
+      <label class="font-medium text-gray-700">📎 Dosya:</label>
+      <input type="file" name="file" class="ml-2 text-sm">
+    </div>
+    <button class="bg-blue-600 text-white px-5 py-2 rounded-lg">Gönder</button>
+  </form>
+</div>
+{% endblock %}

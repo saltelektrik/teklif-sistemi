@@ -4,6 +4,14 @@
 {% block content %}
 <h1 class="text-2xl font-bold text-gray-800 mb-6">💼 Talep Detayı – Teklif Oluştur</h1>
 
+<!-- 💬 Teklif Mesajları Butonu -->
+<div class="mb-4">
+  <a href="/admin/offer_chat/{{ req.id }}" 
+     class="inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">
+    💬 Teklif Mesajlarını Gör
+  </a>
+</div>
+
 <div class="bg-white rounded-xl shadow p-6">
   <p><strong>Ad Soyad:</strong> {{ req.name }}</p>
   <p><strong>E-posta:</strong> {{ req.email }}</p>
@@ -27,12 +35,12 @@
           </tr>
         </thead>
         <tbody>
-          {% for i in range(req.desc|length) %}
+          {% for p in req.products %}
           <tr class="border-t hover:bg-gray-50">
-            <td class="px-3 py-2">{{ req.desc[i] }}</td>
-            <td class="px-3 py-2">{{ req.code[i] }}</td>
-            <td class="px-3 py-2">{{ req.brand[i] }}</td>
-            <td class="px-3 py-2">{{ req.qty[i] }}</td>
+            <td class="px-3 py-2">{{ p.desc }}</td>
+            <td class="px-3 py-2">{{ p.code }}</td>
+            <td class="px-3 py-2">{{ p.brand }}</td>
+            <td class="px-3 py-2">{{ p.qty }}</td>
             <td class="px-3 py-2 text-right">
               <input type="number" min="0" step="0.01"
                 class="border rounded px-2 py-1 w-24 text-right"
