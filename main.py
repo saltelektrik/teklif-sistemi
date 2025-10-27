@@ -220,6 +220,41 @@ def admin_request_detail(req_id):
         return redirect(url_for("admin_dashboard"))
     return render_template("admin/request_detail.html", req=req, user=user)
 
+
+@app.route("/admin/save_offer/<int:req_id>", methods=["POST"])
+@admin_required
+def admin_save_offer(req_id):
+    user = get_current_user()
+    req = next((r for r in requests_data if r["id"] == req_id), None)
+    if not req:
+        flash("Talep bulunamadı.")
+        return redirect(url_for("admin_dashboard"))
+
+    prices = request.form.getlist("price[]")
+    try:
+        prices = [float(p) if p else 0 for p in prices]
+    except ValueError:
+        prices = [0 for _ in prices]
+
+    # Sabit %20 KDV
+    kdv_orani = 0.20
+    kdv_dahil = [round(p + (p * kdv_orani), 2) for p in prices]
+    qtys = [float(q) if q else 0 for q in req["qty"]]
+    ara_toplamlar = [round(k * q, 2) for k, q in zip(kdv_dahil, qtys)]
+
+    toplam = round(sum(ara_toplamlar), 2)
+
+    req["prices"] = prices
+    req["kdv_dahil"] = kdv_dahil
+    req["ara_toplamlar"] = ara_toplamlar
+    req["toplam"] = toplam
+    req["status"] = "Teklif Hazır"
+    req["updated_by"] = user["name"]
+
+    save_data()  # JSON veya DB kaydı
+    flash("Teklif başarıyla kaydedildi.")
+    return redirect(url_for("admin_request_detail", req_id=req_id))
+
 @app.route("/admin/message/<int:req_id>", methods=["POST"])
 @admin_required
 def admin_message(req_id):

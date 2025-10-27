@@ -1,63 +1,106 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}Talep Detayı (Yönetici){% endblock %}
+{% block title %}Talep Detayı – Teklif Oluştur{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold text-gray-800 mb-6">Talep Detayı (Yönetici)</h1>
+<h1 class="text-2xl font-bold text-gray-800 mb-6">💼 Talep Detayı – Teklif Oluştur</h1>
 
-<div class="bg-white shadow-md rounded-xl p-6">
+<div class="bg-white rounded-xl shadow p-6">
   <p><strong>Ad Soyad:</strong> {{ req.name }}</p>
   <p><strong>E-posta:</strong> {{ req.email }}</p>
   <p><strong>Gönderim Tarihi:</strong> {{ req.timestamp }}</p>
 
-  <h3 class="text-lg font-semibold mt-6 mb-3">Mesajlaşma Geçmişi</h3>
+  <h3 class="text-lg font-semibold text-gray-800 mt-6 mb-3">🧾 Ürün Listesi</h3>
 
-  <div id="messagesBox" class="border rounded-lg bg-gray-50 p-4 h-96 overflow-y-auto">
-    {% for msg in req.messages %}
-      <div class="mb-4 p-3 rounded-lg {% if msg.sender == 'yönetici' %}bg-green-100 text-right{% else %}bg-blue-100{% endif %}">
-        <div>{{ msg.text|safe }}</div>
-
-        {% if msg.file %}
-          {% if msg.file.endswith('.png') or msg.file.endswith('.jpg') or msg.file.endswith('.jpeg') %}
-            <div class="mt-2">
-              <img src="{{ msg.file }}" alt="ek görsel" class="max-w-xs rounded-lg border">
-            </div>
-          {% else %}
-            <a href="{{ msg.file }}" target="_blank" class="text-blue-600 underline text-sm">📎 Dosyayı Görüntüle</a>
-          {% endif %}
-        {% endif %}
-
-        <div class="text-xs text-gray-600 mt-1">{{ msg.sender_name }} • {{ msg.time }}</div>
-      </div>
-    {% endfor %}
-  </div>
-
-  <!-- 💬 Yönetici mesaj gönderme formu -->
-  <form action="{{ url_for('admin_message', req_id=req.id) }}" method="POST" enctype="multipart/form-data" class="mt-6 space-y-3">
-    <textarea name="message" placeholder="Yanıtınızı buraya yazın..."
-      class="w-full border rounded-lg p-3 focus:ring focus:ring-blue-200 resize-none"></textarea>
-
-    <div>
-      <label class="font-semibold">📎 Dosya Ekle:</label><br>
-      <input type="file" name="file"
-        accept=".png,.jpg,.jpeg,.pdf,.xlsx,.xls,.docx,.doc,.txt"
-        class="mt-1">
+  <!-- 🔽 Form başlangıcı -->
+  <form action="/admin/save_offer/{{ req.id }}" method="POST">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left border border-gray-200 rounded-lg" id="priceTable">
+        <thead class="bg-gray-100 text-gray-600 uppercase text-xs">
+          <tr>
+            <th class="px-3 py-2">Açıklama</th>
+            <th class="px-3 py-2">Ürün Kodu</th>
+            <th class="px-3 py-2">Marka</th>
+            <th class="px-3 py-2">Miktar</th>
+            <th class="px-3 py-2 text-right">Birim Fiyat (₺)</th>
+            <th class="px-3 py-2 text-right">KDV Dahil (₺)</th>
+            <th class="px-3 py-2 text-right">Ara Toplam (₺)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in range(req.desc|length) %}
+          <tr class="border-t hover:bg-gray-50">
+            <td class="px-3 py-2">{{ req.desc[i] }}</td>
+            <td class="px-3 py-2">{{ req.code[i] }}</td>
+            <td class="px-3 py-2">{{ req.brand[i] }}</td>
+            <td class="px-3 py-2">{{ req.qty[i] }}</td>
+            <td class="px-3 py-2 text-right">
+              <input type="number" min="0" step="0.01"
+                class="border rounded px-2 py-1 w-24 text-right"
+                name="price[]" oninput="updateTotals()" />
+            </td>
+            <td class="px-3 py-2 text-right kdv-cell">0.00</td>
+            <td class="px-3 py-2 text-right subtotal-cell">0.00</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
 
-    <div class="flex items-center justify-between mt-3">
+    <div class="flex justify-end mt-6">
+      <div class="bg-gray-50 border rounded-lg p-4 w-72 text-sm text-gray-700">
+        <div class="flex justify-between mb-2">
+          <span>Toplam (KDV Hariç):</span>
+          <span id="totalWithoutKdv">0.00 ₺</span>
+        </div>
+        <div class="flex justify-between mb-2">
+          <span>KDV (20%):</span>
+          <span id="totalKdv">0.00 ₺</span>
+        </div>
+        <div class="flex justify-between font-bold text-gray-900 border-t pt-2">
+          <span>Genel Toplam:</span>
+          <span id="grandTotal">0.00 ₺</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 💾 Teklifi Kaydet Butonu -->
+    <div class="mt-6 flex justify-end">
       <button type="submit"
-        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-        Yanıt Gönder
+        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition">
+        💾 Teklifi Kaydet
       </button>
-      <a href="{{ url_for('admin_close', req_id=req.id) }}"
-        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">
-        Talebi Kapat
-      </a>
     </div>
   </form>
+  <!-- 🔼 Form sonu -->
 </div>
 
 <script>
-  const box = document.getElementById("messagesBox");
-  if (box) box.scrollTop = box.scrollHeight;
+function updateTotals() {
+  const rows = document.querySelectorAll("#priceTable tbody tr");
+  let totalWithoutKdv = 0;
+  let totalKdv = 0;
+  let grandTotal = 0;
+  const kdvRate = 0.20;
+
+  rows.forEach(row => {
+    const qty = parseFloat(row.children[3].textContent) || 0;
+    const priceInput = row.querySelector('input[name="price[]"]');
+    const price = parseFloat(priceInput.value) || 0;
+
+    const kdvDahil = price + (price * kdvRate);
+    const araToplam = kdvDahil * qty;
+
+    row.querySelector(".kdv-cell").textContent = kdvDahil.toFixed(2);
+    row.querySelector(".subtotal-cell").textContent = araToplam.toFixed(2);
+
+    totalWithoutKdv += price * qty;
+    totalKdv += price * kdvRate * qty;
+    grandTotal += araToplam;
+  });
+
+  document.getElementById("totalWithoutKdv").textContent = totalWithoutKdv.toFixed(2) + " ₺";
+  document.getElementById("totalKdv").textContent = totalKdv.toFixed(2) + " ₺";
+  document.getElementById("grandTotal").textContent = grandTotal.toFixed(2) + " ₺";
+}
 </script>
 {% endblock %}
