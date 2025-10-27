@@ -1,0 +1,70 @@
+[
+  {
+    "id": 1,
+    "name": "Furkan Kıvrak",
+    "email": "furkan@saltelektrik.com",
+    "timestamp": "2025-10-27 12:32:03",
+    "messages": [
+      {
+        "sender": "müşteri",
+        "sender_name": "Furkan Kıvrak",
+        "text": "qwe",
+        "time": "2025-10-27 12:32:03"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Yönetici 1",
+        "text": "qweqwe",
+        "time": "2025-10-27 12:32:47",
+        "file": null
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Yönetici 1",
+        "text": "qwe",
+        "time": "2025-10-27 12:38:52",
+        "file": null
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Yönetici 1",
+        "text": "qweqwe",
+        "time": "2025-10-27 12:41:18",
+        "file": null
+      }
+    ],
+    "status": "replied",
+    "products": [
+      {
+        "desc": "",
+        "code": "",
+        "brand": "",
+        "qty": ""
+      }
+    ],
+    "assigned_admin": "Yönetici 1"
+  },
+  {
+    "id": 2,
+    "name": "Furkan Kıvrak",
+    "email": "furkan@saltelektrik.com",
+    "timestamp": "2025-10-27 13:19:06",
+    "messages": [
+      {
+        "sender": "müşteri",
+        "sender_name": "Furkan Kıvrak",
+        "text": "qwe",
+        "time": "2025-10-27 13:19:06"
+      }
+    ],
+    "status": "new",
+    "products": [
+      {
+        "desc": "qwe",
+        "code": "qwe",
+        "brand": "qwe",
+        "qty": "1"
+      }
+    ]
+  }
+]

@@ -1,0 +1,79 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Yönetici Paneli{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-gray-800 mb-6">Yönetici Paneli</h1>
+
+<div class="bg-white rounded-xl shadow-sm p-6">
+  {% if requests %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm text-left text-gray-700 border border-gray-100 rounded-lg">
+      <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+        <tr>
+          <th class="px-4 py-3">ID</th>
+          <th class="px-4 py-3">Ad Soyad</th>
+          <th class="px-4 py-3">Mesaj</th>
+          <th class="px-4 py-3">Tarih</th>
+          <th class="px-4 py-3">Durum</th>
+          <th class="px-4 py-3">İlgilenen Yönetici</th>
+          <th class="px-4 py-3 text-right">İşlem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in requests %}
+        <tr class="border-t hover:bg-gray-50">
+          <td class="px-4 py-3 font-medium text-gray-800">{{ req.id }}</td>
+          <td class="px-4 py-3">{{ req.name }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ req.messages[0].text[:40] }}...</td>
+          <td class="px-4 py-3 text-gray-500">{{ req.timestamp }}</td>
+          <td class="px-4 py-3">
+            {% if req.status == 'new' %}
+              <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-medium px-2.5 py-1 rounded-full">🔴 Yeni</span>
+            {% elif req.status == 'replied' %}
+              <span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 text-xs font-medium px-2.5 py-1 rounded-full">🟠 Cevaplandı</span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full">🟢 Kapalı</span>
+            {% endif %}
+          </td>
+
+          <!-- ✅ Yeni dropdown -->
+          <td class="px-4 py-3">
+            <select
+              class="border rounded-lg text-sm px-2 py-1 focus:ring-blue-500 focus:border-blue-500"
+              onchange="assignAdmin({{ req.id }}, this.value)">
+              <option value="">— Seç —</option>
+              {% for admin in users if admin.role == 'admin' %}
+                <option value="{{ admin.name }}"
+                  {% if req.assigned_admin == admin.name %}selected{% endif %}>
+                  {{ admin.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </td>
+
+          <td class="px-4 py-3 text-right">
+            <a href="/admin/request/{{ req.id }}" class="text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-xs px-3 py-2 transition">
+              Aç
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-gray-600">Henüz bir talep bulunmamaktadır.</p>
+  {% endif %}
+</div>
+
+<!-- ✅ AJAX -->
+<script>
+  function assignAdmin(reqId, adminName) {
+    fetch(`/admin/assign/${reqId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `admin_name=${encodeURIComponent(adminName)}`
+    });
+  }
+</script>
+{% endblock %}

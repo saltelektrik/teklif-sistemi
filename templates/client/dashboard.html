@@ -1,0 +1,103 @@
+{% extends "client/base_client.html" %}
+
+{% block title %}Müşteri Paneli{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-gray-800 mb-6">Merhaba, {{ user.name }}</h1>
+
+<!-- Yeni Talep Gönder -->
+<div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+  <h3 class="text-lg font-semibold text-gray-800 mb-4">Yeni Talep Gönder</h3>
+
+  <form action="/submit" method="POST" enctype="multipart/form-data" class="space-y-4">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left text-gray-700 border border-gray-100 rounded-lg">
+        <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+          <tr>
+            <th class="px-3 py-2">Açıklama</th>
+            <th class="px-3 py-2">Ürün Kodu</th>
+            <th class="px-3 py-2">Marka</th>
+            <th class="px-3 py-2">Miktar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-t">
+            <td class="px-3 py-2"><input type="text" name="desc[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
+            <td class="px-3 py-2"><input type="text" name="code[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
+            <td class="px-3 py-2"><input type="text" name="brand[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
+            <td class="px-3 py-2"><input type="text" name="qty[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div>
+      <textarea
+        name="message"
+        placeholder="Ek notlarınızı buraya yazabilirsiniz..."
+        class="w-full h-28 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+      ></textarea>
+    </div>
+
+    <div>
+      <label class="font-medium text-gray-700">📷 Fotoğraf Ekle</label><br>
+      <input type="file" name="photo" accept="image/*" class="mt-2 text-sm text-gray-700">
+    </div>
+
+    <button
+      type="submit"
+      class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+    >
+      Gönder
+    </button>
+  </form>
+</div>
+
+<!-- Geçmiş Talepler -->
+<div class="bg-white rounded-xl shadow-sm p-6">
+  <h3 class="text-lg font-semibold text-gray-800 mb-4">Geçmiş Taleplerim</h3>
+
+  {% if requests %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm text-left text-gray-700 border border-gray-100 rounded-lg">
+      <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+        <tr>
+          <th class="px-3 py-2">ID</th>
+          <th class="px-3 py-2">Tarih</th>
+          <th class="px-3 py-2">Durum</th>
+          <th class="px-3 py-2 text-right">Detay</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in requests %}
+        <tr class="border-t hover:bg-gray-50">
+          <td class="px-3 py-2">{{ req.id }}</td>
+          <td class="px-3 py-2 text-gray-500">{{ req.timestamp }}</td>
+          <td class="px-3 py-2">
+            {% if req.status == 'new' %}
+              <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                🔴 Yeni
+              </span>
+            {% elif req.status == 'replied' %}
+              <span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                🟠 Cevaplandı
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                🟢 Kapalı
+              </span>
+            {% endif %}
+          </td>
+          <td class="px-3 py-2 text-right">
+            <a href="/status/{{ req.id }}" class="text-blue-600 hover:underline text-sm">Görüntüle</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-gray-600">Henüz bir talebiniz bulunmamaktadır.</p>
+  {% endif %}
+</div>
+{% endblock %}

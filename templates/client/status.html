@@ -1,0 +1,53 @@
+{% extends "client/base_client.html" %}
+{% block title %}Talep Detayı{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-gray-800 mb-6">Talep Detayı</h1>
+
+<div class="bg-white shadow-md rounded-xl p-6">
+  <p><strong>Ad Soyad:</strong> {{ req.name }}</p>
+  <p><strong>E-posta:</strong> {{ req.email }}</p>
+  <p><strong>Gönderim Tarihi:</strong> {{ req.timestamp }}</p>
+
+  <h3 class="text-lg font-semibold mt-6 mb-3">Mesajlaşma Geçmişi</h3>
+
+  <div class="border rounded-lg bg-gray-50 p-4 h-96 overflow-y-auto" id="messagesBox">
+    {% for msg in req.messages %}
+      <div class="mb-4 p-3 rounded-lg {% if msg.sender == 'müşteri' %}bg-blue-100 text-right{% else %}bg-gray-200{% endif %}">
+        <div>{{ msg.text|safe }}</div>
+
+        {% if msg.file %}
+          {% if msg.file.endswith('.png') or msg.file.endswith('.jpg') or msg.file.endswith('.jpeg') %}
+            <div class="mt-2">
+              <img src="{{ msg.file }}" alt="ek görsel" class="max-w-xs rounded-lg border">
+            </div>
+          {% else %}
+            <a href="{{ msg.file }}" target="_blank" class="text-blue-600 underline text-sm">📎 Dosyayı Görüntüle</a>
+          {% endif %}
+        {% endif %}
+
+        <div class="text-xs text-gray-600 mt-1">{{ msg.sender_name }} • {{ msg.time }}</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- 💬 Müşteri mesaj gönderme formu -->
+  <form action="{{ url_for('status', req_id=req.id) }}" method="POST" enctype="multipart/form-data" class="mt-6 space-y-3">
+    <textarea name="message" placeholder="Yanıtınızı buraya yazın..." class="w-full border rounded-lg p-3 focus:ring focus:ring-blue-200"></textarea>
+
+    <div>
+      <label class="font-semibold">📎 Dosya Ekle:</label><br>
+      <input type="file" name="file" accept=".png,.jpg,.jpeg,.pdf,.xlsx,.xls,.docx,.doc,.txt" class="mt-1">
+    </div>
+
+    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+      Gönder
+    </button>
+  </form>
+</div>
+
+<script>
+  const box = document.getElementById("messagesBox");
+  if (box) box.scrollTop = box.scrollHeight;
+</script>
+{% endblock %}
