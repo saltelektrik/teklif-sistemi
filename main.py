@@ -234,18 +234,19 @@ def offer_chat(req_id):
         flash("Talep bulunamadı.")
         return redirect(url_for("dashboard"))
 
+    # 🔹 Mesaj gönderme
     if request.method == "POST":
         text = request.form.get("message", "").strip()
         file = request.files.get("file")
         file_path = None
+
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
             file_path = f"/static/uploads/{filename}"
 
         if text or file_path:
-            if "offer_messages" not in req:
-                req["offer_messages"] = []
+            req.setdefault("offer_messages", [])
             req["offer_messages"].append({
                 "sender": "müşteri",
                 "sender_name": user["name"],
@@ -254,10 +255,18 @@ def offer_chat(req_id):
                 "file": file_path
             })
             save_requests()
-        return redirect(url_for("offer_chat", req_id=req_id))
 
+        # JavaScript sayfayı yenilemeden POST yapıyor, o yüzden boş dönüyoruz
+        return ("", 204)
+
+    # 🔹 GET isteği → mesajları yenilemek için JSON veya HTML döner
+    # AJAX yenileme için minimal HTML dönüyoruz
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        # sadece mesaj alanını döndürelim
+        return render_template("client/_chat_messages.html", messages=req["offer_messages"])
+
+    # Normal sayfa yükleme
     return render_template("client/offer_chat.html", req=req, user=user)
-
 
 # 💬 Admin tarafı teklif mesajlaşması
 @app.route("/admin/offer_chat/<int:req_id>", methods=["GET", "POST"])
@@ -335,6 +344,86 @@ def admin_login():
         flash(f"{user['name']} olarak giriş yapıldı.")
         return redirect(url_for("admin_dashboard"))
     return render_template("admin/login.html")
+
+# 💾 Teklif kaydetme (admin) — temiz sürüm
+@app.route("/admin/save_offer/<int:req_id>", methods=["POST"])
+@admin_required
+def admin_save_offer(req_id):
+    user = get_current_user()
+    req = next((r for r in requests_data if r["id"] == req_id), None)
+    if not req:
+        flash("Talep bulunamadı.")
+        return redirect(url_for("admin_dashboard"))
+
+    # 1) Form verileri
+    raw_prices = request.form.getlist("price[]")  # her ürün için bir fiyat
+    offer_text = request.form.get("offer_text", "").strip()
+
+    # 2) Dosya (isteğe bağlı)
+    file = request.files.get("file")
+    file_path = None
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+        file_path = f"/static/uploads/{filename}"
+
+    # 3) Fiyat parse (boş/çöp değer -> 0.0)
+    prices = []
+    for p in raw_prices:
+        try:
+            prices.append(float(str(p).replace(",", ".")))
+        except (ValueError, TypeError):
+            prices.append(0.0)
+
+    # 4) Hesaplamalar
+    kdv_orani = 0.20
+    req_prices, kdv_dahil, ara_toplamlar = [], [], []
+    toplam = 0.0
+    products = req.get("products", [])
+
+    for i, prod in enumerate(products):
+        fiyat = prices[i] if i < len(prices) else 0.0
+        try:
+            adet = float(str(prod.get("qty", "0")).replace(",", "."))
+        except (ValueError, TypeError):
+            adet = 0.0
+
+        fiyat_kdv = round(fiyat * (1 + kdv_orani), 2)
+        satir_toplam = round(fiyat_kdv * adet, 2)
+
+        req_prices.append(fiyat)
+        kdv_dahil.append(fiyat_kdv)
+        ara_toplamlar.append(satir_toplam)
+        toplam += satir_toplam
+
+    # En az bir ürünün fiyatı > 0 olmalı
+    if all(f == 0 for f in req_prices):
+        flash("En az bir ürün fiyatı girilmelidir.")
+        return redirect(url_for("admin_request_detail", req_id=req_id))
+
+    # 5) Kalıcı kaydet
+    req["prices"] = req_prices
+    req["kdv_dahil"] = kdv_dahil
+    req["ara_toplamlar"] = ara_toplamlar
+    req["toplam"] = round(toplam, 2)
+    req["status"] = "Teklif Hazır"
+    req["offer_note"] = offer_text
+
+    # 6) Mesaj geçmişine bilgi düş
+    req.setdefault("offer_messages", [])
+    req["offer_messages"].append({
+        "sender": "yönetici",
+        "sender_name": user["name"],
+        "text": f"Yeni teklif hazırlandı. Toplam: {req['toplam']:.2f} ₺\n{offer_text}",
+        "file": file_path,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+    save_requests()
+    flash("Teklif başarıyla kaydedildi.")
+    return redirect(url_for("admin_request_detail", req_id=req_id))
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,0 +1,9 @@
+{% for msg in messages %}
+<div class="p-2 rounded-lg {% if msg.sender == 'müşteri' %}bg-green-100 text-right{% else %}bg-gray-100 text-left{% endif %}">
+  <div class="text-xs text-gray-500 mb-1">{{ msg.sender_name }} • {{ msg.time }}</div>
+  <div class="text-sm">{{ msg.text }}</div>
+  {% if msg.file %}
+    <a href="{{ msg.file }}" target="_blank" class="text-blue-600 text-xs underline block mt-1">📎 Dosyayı Görüntüle</a>
+  {% endif %}
+</div>
+{% endfor %}
