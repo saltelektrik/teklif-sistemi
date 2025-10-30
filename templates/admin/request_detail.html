@@ -83,10 +83,21 @@
       <input type="file" name="file" class="border rounded-lg p-2 w-full">
     </div>
 
-    <div class="mt-6 flex justify-end">
+    <div class="mt-6 flex justify-between items-center">
+      {% if req.status != "Kapalı" %}
+        <a href="{{ url_for('admin_close', req_id=req.id) }}"
+           class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition">
+           🚫 Talebi Kapat
+        </a>
+      {% else %}
+        <span class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm">✔️ Talep Kapalı</span>
+      {% endif %}
+
       <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition">
         💾 Teklifi Kaydet
       </button>
+<a href="{{ url_for('admin_offer_pdf', req_id=req.id) }}" class="btn btn-secondary">PDF Olarak İndir</a>
+
     </div>
   </form>
 </div>
@@ -105,7 +116,6 @@
 <!-- Chat Panel -->
 <div id="chatPanel"
   class="fixed bottom-20 right-6 w-[340px] h-[70vh] bg-white border border-gray-300 shadow-2xl rounded-xl flex flex-col transition-all duration-300 opacity-0 pointer-events-none transform scale-95">
-
   <div class="bg-indigo-600 text-white flex justify-between items-center py-2 px-3 font-semibold rounded-t-xl">
     <span>💬 Teklif Mesajlaşması</span>
     <button id="chatCloseBtn" class="text-white text-xl font-bold hover:text-gray-200 transition">×</button>
@@ -145,7 +155,7 @@
 </style>
 
 <script>
-// 💬 Chat JS (korundu)
+// 💬 Chat JS
 const chatPanel = document.getElementById("chatPanel");
 const chatToggleBtn = document.getElementById("chatToggleBtn");
 const chatCloseBtn = document.getElementById("chatCloseBtn");
@@ -191,7 +201,7 @@ window.addEventListener("load", () => {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
-// 🔢 Otomatik KDV ve toplam hesaplama (yeni)
+// 🔢 KDV ve Toplam Hesaplama
 function updateTotals() {
   const rows = document.querySelectorAll("#priceTable tbody tr");
   let totalWithoutKdv = 0;

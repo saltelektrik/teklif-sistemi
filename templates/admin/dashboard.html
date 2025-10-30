@@ -25,20 +25,26 @@
           <td class="px-4 py-3 font-medium text-gray-800">{{ req.id }}</td>
           <td class="px-4 py-3">{{ req.name }}</td>
           <td class="px-4 py-3 text-gray-600">
-  {{ (req.messages[0].text[:40] + '...') if req.messages is defined and req.messages|length > 0 else '—' }}
-</td>
+            {{ (req.messages[0].text[:40] + '...') if req.messages is defined and req.messages|length > 0 else '—' }}
+          </td>
           <td class="px-4 py-3 text-gray-500">{{ req.timestamp }}</td>
+
+          <!-- 🔄 Durum Renkleri -->
           <td class="px-4 py-3">
-            {% if req.status == 'new' %}
+            {% if req.status == 'Yeni' %}
               <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-medium px-2.5 py-1 rounded-full">🔴 Yeni</span>
-            {% elif req.status == 'replied' %}
+            {% elif req.status == 'Cevaplandı' %}
               <span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 text-xs font-medium px-2.5 py-1 rounded-full">🟠 Cevaplandı</span>
+            {% elif req.status == 'Teklif Hazır' %}
+              <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full">🟢 Teklif Hazır</span>
+            {% elif req.status == 'Kapalı' %}
+              <span class="inline-flex items-center gap-1 bg-gray-200 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">⚫ Kapalı</span>
             {% else %}
-              <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full">🟢 Kapalı</span>
+              <span class="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">❔ Bilinmiyor</span>
             {% endif %}
           </td>
 
-          <!-- ✅ Yeni dropdown -->
+          <!-- ✅ Admin seçimi -->
           <td class="px-4 py-3">
             <select
               class="border rounded-lg text-sm px-2 py-1 focus:ring-blue-500 focus:border-blue-500"

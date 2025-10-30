@@ -4,6 +4,12 @@ from email.header import decode_header
 from datetime import datetime
 import time
 import ssl
+import json
+import os
+
+# 📂 JSON dosyası — main.py ile aynı veri kaynağı
+os.makedirs("data", exist_ok=True)
+DATA_FILE = "data/requests.json"
 
 # --- Natro Kurumsal Eposta Bilgileri ---
 EMAIL = "teklif@e-saltelektrik.com"
@@ -13,29 +19,30 @@ IMAP_PORT = 993
 
 
 def check_emails(requests_data):
-    """Kurumsal Eposta kutusunu kontrol eder ve yeni mailleri requests_data listesine ekler."""
+    """Kurumsal e-posta kutusunu kontrol eder ve yeni mailleri requests_data listesine ekler."""
     try:
-        # Güvenli ama eski SSL sürümleriyle uyumlu context oluştur
         context = ssl.create_default_context()
         context.options |= 0x4  # SSL_OP_LEGACY_SERVER_CONNECT
 
         mail = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT, ssl_context=context)
         mail.login(EMAIL, PASSWORD)
+        print("✅ IMAP bağlantısı başarılı:", EMAIL)
         mail.select("INBOX")
 
-        # Tüm mailleri kontrol et (test aşamasında)
-        status, messages = mail.search(None, "ALL")
+        status, messages = mail.search(None, "UNSEEN")
         mail_ids = messages[0].split()
+        print("📥 Mail kutusu içeriği:", len(mail_ids), "adet mail bulundu.")
 
-        for num in mail_ids[-3:]:  # sadece son 3 maili kontrol et (fazla yüklenmesin)
+        for num in mail_ids[-3:]:
             _, data = mail.fetch(num, "(RFC822)")
             msg = email.message_from_bytes(data[0][1])
+            mail.store(num, '+FLAGS', '\\Seen')
 
-            # Konu
             subject, encoding = decode_header(msg["Subject"])[0]
             if isinstance(subject, bytes):
                 subject = subject.decode(encoding or "utf-8", errors="ignore")
             sender = msg.get("From")
+            print("📨 Yeni mail kontrol ediliyor:", subject)
 
             # İçerik çözümleme
             body = ""
@@ -55,8 +62,8 @@ def check_emails(requests_data):
 
             # Yeni talep kaydı oluştur
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            requests_data.append({
-                "id": len(requests_data),
+            new_request = {
+                "id": len(requests_data) + 1,
                 "user_id": 0,
                 "name": sender,
                 "email": sender,
@@ -66,26 +73,47 @@ def check_emails(requests_data):
                     "image": None,
                     "time": timestamp
                 }],
-                "status": "new",
+                "status": "Yeni Talep",
                 "timestamp": timestamp
-            })
+            }
 
-            print(f"\033[92m[✓ YENİ TEKLİF]\033[0m {sender} → {subject}")
+            requests_data.append(new_request)
+
+            # JSON dosyasına kaydet (birikmeli - eskiler silinmez)
+            try:
+                if os.path.exists(DATA_FILE):
+                    with open(DATA_FILE, "r+", encoding="utf-8") as f:
+                        try:
+                            existing_data = json.load(f)
+                        except:
+                            existing_data = []
+
+                        existing_data.append(new_request)
+                        f.seek(0)
+                        json.dump(existing_data, f, ensure_ascii=False, indent=4)
+                        f.truncate()
+                        print("💾 Yeni talep eklendi:", subject)
+                else:
+                    with open(DATA_FILE, "w", encoding="utf-8") as f:
+                        json.dump([new_request], f, ensure_ascii=False, indent=4)
+                        print("💾 Yeni dosya oluşturuldu:", subject)
+
+            except Exception as e:
+                print("⚠️ JSON kaydetme hatası:", e)
 
         mail.logout()
 
-    except ssl.SSLError as e:
-        print(f"⚠️ SSL hatası: {e}")
-    except imaplib.IMAP4.error as e:
-        print(f"⚠️ IMAP hatası: {e}")
     except Exception as e:
-        print(f"⚠️ Mail okuma hatası: {e}")
+        print("❌ Mail okuma hatası:", e)
 
 
-# Test çalıştırması (isteğe bağlı)
-if __name__ == "__main__":
-    requests_data = []
+# 🟢 Global değişken tanımla
+requests_data = []
+
+
+def start_listener():
+    global requests_data
     print("📬 Mail dinleme başlatıldı (Kurumsal Eposta)...")
     while True:
         check_emails(requests_data)
-        time.sleep(60)
+        time.sleep(20)

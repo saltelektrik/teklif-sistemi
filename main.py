@@ -209,17 +209,43 @@ def status(req_id):
 @app.route("/admin/dashboard")
 @admin_required
 def admin_dashboard():
+    global requests_data
+    import json
+
+    # 🔹 En güncel talepleri JSON dosyasından yeniden yükle
+    try:
+        with open("data/requests.json", "r", encoding="utf-8") as f:
+            requests_data = json.load(f)
+            print(f"📂 Dashboard için {len(requests_data)} kayıt yüklendi.")
+    except Exception as e:
+        print("⚠️ Dashboard veri yükleme hatası:", e)
+        requests_data = []
+
     user = get_current_user()
     return render_template("admin/dashboard.html", requests=requests_data, user=user, users=users)
+
 
 @app.route("/admin/request/<int:req_id>")
 @admin_required
 def admin_request_detail(req_id):
+    global requests_data
+    import json
+
+    # 🔹 Güncel veriyi yeniden oku (sayfa tazelenirken değişiklikleri görmek için)
+    try:
+        with open("data/requests.json", "r", encoding="utf-8") as f:
+            requests_data = json.load(f)
+    except Exception as e:
+        print("⚠️ Detay sayfası veri yükleme hatası:", e)
+        requests_data = []
+
     user = get_current_user()
     req = next((r for r in requests_data if r["id"] == req_id), None)
+
     if not req:
         flash("Talep bulunamadı.")
         return redirect(url_for("admin_dashboard"))
+
     return render_template("admin/request_detail.html", req=req, user=user)
 
 # ===================== 💬 Teklif Mesajlaşma (Yeni) =====================
@@ -303,15 +329,16 @@ def admin_offer_chat(req_id):
         return redirect(url_for("admin_offer_chat", req_id=req_id))
 
     return render_template("admin/offer_chat.html", req=req, user=user)
+
 # 🔒 Talep kapatma
 @app.route("/admin/close/<int:req_id>")
 @admin_required
 def admin_close(req_id):
     req = next((r for r in requests_data if r["id"] == req_id), None)
     if req:
-        req["status"] = "closed"
-        flash("Talep kapatıldı.")
+        req["status"] = "Kapalı"
         save_requests()
+        flash("Talep kapatıldı.")
     return redirect(url_for("admin_dashboard"))
 
 # 👤 Hesap sayfaları
@@ -356,7 +383,7 @@ def admin_save_offer(req_id):
         return redirect(url_for("admin_dashboard"))
 
     # 1) Form verileri
-    raw_prices = request.form.getlist("price[]")  # her ürün için bir fiyat
+    raw_prices = request.form.getlist("price[]")
     offer_text = request.form.get("offer_text", "").strip()
 
     # 2) Dosya (isteğe bağlı)
@@ -367,7 +394,7 @@ def admin_save_offer(req_id):
         file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
         file_path = f"/static/uploads/{filename}"
 
-    # 3) Fiyat parse (boş/çöp değer -> 0.0)
+    # 3) Fiyat parse
     prices = []
     for p in raw_prices:
         try:
@@ -396,7 +423,6 @@ def admin_save_offer(req_id):
         ara_toplamlar.append(satir_toplam)
         toplam += satir_toplam
 
-    # En az bir ürünün fiyatı > 0 olmalı
     if all(f == 0 for f in req_prices):
         flash("En az bir ürün fiyatı girilmelidir.")
         return redirect(url_for("admin_request_detail", req_id=req_id))
@@ -406,8 +432,15 @@ def admin_save_offer(req_id):
     req["kdv_dahil"] = kdv_dahil
     req["ara_toplamlar"] = ara_toplamlar
     req["toplam"] = round(toplam, 2)
-    req["status"] = "Teklif Hazır"
+
+    # 🔄 Durum güncelleme
+    if req.get("status") in [None, "Yeni", "new"]:
+        req["status"] = "Cevaplandı"
+    elif req.get("status") != "Kapalı":
+        req["status"] = "Teklif Hazır"
+
     req["offer_note"] = offer_text
+    save_requests()
 
     # 6) Mesaj geçmişine bilgi düş
     req.setdefault("offer_messages", [])
@@ -423,7 +456,172 @@ def admin_save_offer(req_id):
     flash("Teklif başarıyla kaydedildi.")
     return redirect(url_for("admin_request_detail", req_id=req_id))
 
+# ------------------------
+#  ReportLab importları
+# ------------------------
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+
+# ------------------------
+#  PDF OLUŞTUR + MAİL GÖNDER
+# ------------------------
+import smtplib
+from email.message import EmailMessage
+
+@app.route("/admin/offer_pdf/<int:req_id>")
+@admin_required
+def admin_offer_pdf(req_id):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import cm
+    import ssl
+    import smtplib
+    from email.message import EmailMessage
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+# Türkçe karakter desteği
+    pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+    pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'DejaVuSans-Bold.ttf'))
+
+    req = next((r for r in requests_data if r["id"] == req_id), None)
+    print("PDF oluşturuluyor:", req)
+    if not req:
+        flash("Teklif bulunamadı.")
+        return redirect(url_for("admin_dashboard"))
+    
+    pdf_path = os.path.join("static", "uploads", f"teklif_{req_id}.pdf")
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+    doc = SimpleDocTemplate(pdf_path, pagesize=A4)
+    elements = []
+    styles = getSampleStyleSheet()
+    styles["Normal"].fontName = 'DejaVuSans'
+    styles["Title"].fontName = 'DejaVuSans'
+
+        # 🔹 LOGO ve başlık
+    logo_path = os.path.join("static", "uploads", "HD LOGO 4K.png")  # logo dosyasının yolu
+    if os.path.exists(logo_path):
+        elements.append(Image(logo_path, width=4*cm, height=4*cm))
+    elements.append(Spacer(1, 0.5*cm))
+    elements.append(Paragraph("<b>ŞALT ELEKTRİK</b> - Teklif Formu", styles["Title"]))
+    elements.append(Spacer(1, 0.3*cm))
+
+    # 🔹 Üst Bilgiler
+    details = f"""
+    <b>Müşteri:</b> {req.get('name', 'Bilinmiyor')}<br/>
+    <b>E-posta:</b> {req.get('email', '')}<br/>
+    <b>Tarih:</b> {datetime.now().strftime('%d.%m.%Y %H:%M')}<br/>
+    <b>Teklif No:</b> #{req_id}<br/>
+    """
+    elements.append(Paragraph(details, styles["Normal"]))
+    elements.append(Spacer(1, 0.5*cm))
+
+    # 🔹 Ürün Tablosu
+    from reportlab.platypus import Paragraph
+
+    data = [["Sıra", "Ürün Açıklaması", "Kod", "Marka", "Adet", "Birim Fiyat", "KDV Dahil", "Tutar"]]
+    products = req.get("products", [])
+    prices = req.get("prices", [])
+    kdv = req.get("kdv_dahil", [])
+    ara_toplam = req.get("ara_toplamlar", [])
+
+    for i, prod in enumerate(products):
+        desc = Paragraph(prod.get("desc", ""), styles["Normal"])
+        code = Paragraph(prod.get("code", ""), styles["Normal"])
+        brand = Paragraph(prod.get("brand", ""), styles["Normal"])
+
+        data.append([
+            str(i + 1),
+            desc,
+            code,
+            brand,
+            str(prod.get("qty", "")),
+            f"{prices[i]:.2f} ₺" if i < len(prices) else "-",
+            f"{kdv[i]:.2f} ₺" if i < len(kdv) else "-",
+            f"{ara_toplam[i]:.2f} ₺" if i < len(ara_toplam) else "-"
+        ])
+
+    # 🔹 Tablo stili
+    table = Table(
+        data,
+        colWidths=[1*cm, 5*cm, 2.5*cm, 3*cm, 1.5*cm, 2.5*cm, 2.5*cm, 3*cm]
+    )
+    table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'DejaVuSans'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (1, 1), (1, -1), 'LEFT'),  # Ürün açıklamaları sola hizalı
+        ('WORDWRAP', (0, 0), (-1, -1), True),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 0), (-1, 0), 'DejaVuSans-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+    ]))
+    elements.append(table)
+    elements.append(Spacer(1, 0.5*cm))
 
 
+    # 🔹 Açıklamalar
+    notes = """
+    <b>Açıklamalar:</b><br/>
+    Ödeme vadesi: Peşin<br/>
+    Teklif geçerlilik süresi: 7 gün<br/>
+    Teslim süresi: Stok durumuna göre değişir.<br/>
+    """
+    elements.append(Paragraph(notes, styles["Normal"]))
+
+    doc.build(elements)
+
+        # ✅ Mail gönder
+    sender_email = "teklif@e-saltelektrik.com"
+    sender_password = "KampanyaXmail0217"
+    to_email = req.get("email")
+
+    msg = EmailMessage()
+    msg["Subject"] = "Yeni Teklifiniz Hazır"
+    msg["From"] = sender_email
+    msg["To"] = to_email
+    msg.set_content("Merhaba,\n\nYeni teklifiniz ekte yer almaktadır.\nİyi çalışmalar dileriz.\n\nSalt Elektrik")
+
+    with open(pdf_path, "rb") as f:
+        msg.add_attachment(f.read(), maintype="application", subtype="pdf", filename=os.path.basename(pdf_path))
+
+    try:
+        context = ssl._create_unverified_context()
+        with smtplib.SMTP("mail.kurumsaleposta.com", 587) as smtp:
+            smtp.starttls(context=context)
+            smtp.login(sender_email, sender_password)
+            smtp.send_message(msg)
+            print(f"✅ Mail gönderildi: {to_email}")
+    except Exception as e:
+        print("❌ Mail gönderim hatası:", e)
+
+    flash("Teklif PDF oluşturuldu ve mail gönderildi.")
+    return redirect(url_for('static', filename=f"uploads/teklif_{req_id}.pdf"))
+
+
+# 📬 Mail listener başlatıcı fonksiyon
+import threading
+from mail_listener import start_listener
+
+def run_mail_listener():
+    try:
+        threading.Thread(target=start_listener, daemon=True).start()
+        print("📬 Mail listener başlatıldı.")
+    except Exception as e:
+        print("❌ Mail listener başlatılamadı:", e)
+
+# Arka planda mail listener’ı başlat
+run_mail_listener()
+
+# Flask uygulamasını başlat
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
