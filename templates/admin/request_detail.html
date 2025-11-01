@@ -9,6 +9,31 @@
   <p><strong>E-posta:</strong> {{ req.email }}</p>
   <p><strong>Gönderim Tarihi:</strong> {{ req.timestamp }}</p>
 
+  <!-- 🔁 Müşteri Notu -->
+  <h3 class="text-lg font-semibold text-gray-800 mt-6 mb-3">💬 Müşteri Notu</h3>
+  <div class="border rounded-lg p-4 bg-gray-50 max-h-72 overflow-y-auto space-y-3">
+    {% set all_messages = (req.request_messages or []) + (req.messages or []) %}
+    {% if all_messages and all_messages|length > 0 %}
+      {% for msg in all_messages %}
+        <div class="flex {% if msg.sender == 'yönetici' %}justify-end{% else %}justify-start{% endif %}">
+          <div class="max-w-[80%] p-3 rounded-2xl shadow-sm 
+                      {% if msg.sender == 'yönetici' %}bg-indigo-500 text-white rounded-br-none{% else %}bg-gray-200 text-gray-800 rounded-bl-none{% endif %}">
+            <div class="text-sm leading-snug whitespace-pre-wrap">{{ msg.text }}</div>
+            {% if msg.file %}
+              <a href="{{ msg.file }}" target="_blank" class="block text-xs mt-1 underline">📎 Ek Dosya</a>
+            {% endif %}
+            <div class="text-[11px] mt-1 opacity-80 text-right">
+              {{ msg.sender_name or msg.sender }} • {{ msg.time }}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="text-gray-500 text-sm">Henüz mesaj bulunmuyor.</p>
+    {% endif %}
+  </div>
+
+  <!-- 🔁 Ürün Listesi -->
   <h3 class="text-lg font-semibold text-gray-800 mt-6 mb-3">🧾 Ürün Listesi</h3>
 
   <form action="{{ url_for('admin_save_offer', req_id=req.id) }}" method="POST" enctype="multipart/form-data">
@@ -23,59 +48,62 @@
             <th class="px-3 py-2 text-right">Birim Fiyat (₺)</th>
             <th class="px-3 py-2 text-right">KDV Dahil (₺)</th>
             <th class="px-3 py-2 text-right">Ara Toplam (₺)</th>
+            <th class="px-3 py-2 text-center">Sil</th>
           </tr>
         </thead>
         <tbody>
+          {% if req.products|length == 1 and not req.products[0].desc %}
+            <tr><td colspan="8" class="text-center text-gray-500 py-3">⚠️ Bu talep müşteri notu üzerinden oluşturulmuştur, ürün listesi boş.</td></tr>
+          {% endif %}
           {% for p in req.products %}
-          <tr class="border-t hover:bg-gray-50" data-index="{{ loop.index0 }}">
-            <td class="px-3 py-2">{{ p.desc }}</td>
-            <td class="px-3 py-2">{{ p.code }}</td>
-            <td class="px-3 py-2">{{ p.brand }}</td>
-            <td class="px-3 py-2">{{ p.qty }}</td>
+          <tr class="border-t hover:bg-gray-50">
+            <td class="px-3 py-2"><input type="text" name="desc[]" value="{{ p.desc }}" class="border rounded px-2 py-1 w-full"></td>
+            <td class="px-3 py-2"><input type="text" name="code[]" value="{{ p.code }}" class="border rounded px-2 py-1 w-full"></td>
+            <td class="px-3 py-2"><input type="text" name="brand[]" value="{{ p.brand }}" class="border rounded px-2 py-1 w-full"></td>
+            <td class="px-3 py-2"><input type="text" name="qty[]" value="{{ p.qty }}" class="border rounded px-2 py-1 w-16 text-center"></td>
             <td class="px-3 py-2 text-right">
-              <input type="number" min="0" step="0.01"
-                     class="border rounded px-2 py-1 w-24 text-right"
-                     name="price[]" oninput="updateTotals()"
-                     value="{{ req.prices[loop.index0] if req.prices is defined and loop.index0 < req.prices|length else '' }}" />
+              <input type="number" min="0" step="0.01" name="price[]" class="border rounded px-2 py-1 w-24 text-right" value="{{ req.prices[loop.index0] if req.prices is defined and loop.index0 < req.prices|length else '' }}" oninput="updateTotals()">
             </td>
-            <td class="px-3 py-2 text-right kdv-cell">
-              {{ "%.2f"|format(req.kdv_dahil[loop.index0]) if req.kdv_dahil is defined and loop.index0 < req.kdv_dahil|length else "0.00" }}
-            </td>
-            <td class="px-3 py-2 text-right subtotal-cell">
-              {{ "%.2f"|format(req.ara_toplamlar[loop.index0]) if req.ara_toplamlar is defined and loop.index0 < req.ara_toplamlar|length else "0.00" }}
-            </td>
+            <td class="px-3 py-2 text-right kdv-cell">{{ '%.2f'|format(req.kdv_dahil[loop.index0]) if req.kdv_dahil is defined and loop.index0 < req.kdv_dahil|length else '0.00' }}</td>
+            <td class="px-3 py-2 text-right subtotal-cell">{{ '%.2f'|format(req.ara_toplamlar[loop.index0]) if req.ara_toplamlar is defined and loop.index0 < req.ara_toplamlar|length else '0.00' }}</td>
+            <td class="px-3 py-2 text-center"><button type="button" data-row-delete class="text-red-600 hover:text-red-800">✕</button></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
 
+    <div class="mt-3">
+      <button type="button" id="addProductBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1.5 rounded-lg">
+        + Ürün Ekle
+      </button>
+    </div>
+
     <div class="flex justify-end mt-6">
       <div class="bg-gray-50 border rounded-lg p-4 w-72 text-sm text-gray-700">
         <div class="flex justify-between mb-2">
           <span>Toplam (KDV Hariç):</span>
-          <span id="totalWithoutKdv">
-            {{ "%.2f"|format((req.toplam / 1.20) if req.toplam is defined else 0) }} ₺
-          </span>
+          <span id="totalWithoutKdv">{{ '%.2f'|format((req.toplam / 1.20) if req.toplam is defined else 0) }} ₺</span>
         </div>
         <div class="flex justify-between mb-2">
           <span>KDV (20%):</span>
-          <span id="totalKdv">
-            {{ "%.2f"|format((req.toplam - (req.toplam / 1.20)) if req.toplam is defined else 0) }} ₺
-          </span>
+          <span id="totalKdv">{{ '%.2f'|format((req.toplam - (req.toplam / 1.20)) if req.toplam is defined else 0) }} ₺</span>
         </div>
         <div class="flex justify-between font-bold text-gray-900 border-t pt-2">
           <span>Genel Toplam:</span>
-          <span id="grandTotal">
-            {{ "%.2f"|format(req.toplam if req.toplam is defined else 0) }} ₺
-          </span>
+          <span id="grandTotal">{{ '%.2f'|format(req.toplam if req.toplam is defined else 0) }} ₺</span>
         </div>
       </div>
     </div>
 
     <div class="mt-6">
       <label class="block text-sm font-medium mb-1">Teklif Notu:</label>
-      <textarea name="offer_text" class="border rounded-lg w-full p-2" placeholder="Teklif açıklaması veya özel not yazın..."></textarea>
+      <textarea name="offer_text" class="border rounded-lg w-full p-2" placeholder="Teklif açıklaması veya özel not yazın...">{{ req.offer_note or '' }}</textarea>
+      {% if req.offer_note %}
+        <div class="mt-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-2">
+          <b>Kaydedilen Not:</b> {{ req.offer_note }}
+        </div>
+      {% endif %}
     </div>
 
     <div class="mt-4">
@@ -84,149 +112,63 @@
     </div>
 
     <div class="mt-6 flex justify-between items-center">
-      {% if req.status != "Kapalı" %}
-        <a href="{{ url_for('admin_close', req_id=req.id) }}"
-           class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition">
-           🚫 Talebi Kapat
-        </a>
+      {% if req.status != 'Kapalı' %}
+        <a href="{{ url_for('admin_close', req_id=req.id) }}" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition">🚫 Talebi Kapat</a>
       {% else %}
         <span class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm">✔️ Talep Kapalı</span>
       {% endif %}
 
-      <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition">
-        💾 Teklifi Kaydet
-      </button>
-<a href="{{ url_for('admin_offer_pdf', req_id=req.id) }}" class="btn btn-secondary">PDF Olarak İndir</a>
-
-    </div>
-  </form>
-</div>
-
-<!-- 💬 Baloncuk Chat -->
-<div id="chatBubble" class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-  <span class="mb-2 bg-gray-800 text-white text-xs px-3 py-1 rounded-full shadow-lg opacity-90">
-    Teklif mesajlarını görüntüle
-  </span>
-  <button id="chatToggleBtn"
-    class="w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center text-2xl transition-transform duration-300">
-    💬
-  </button>
-</div>
-
-<!-- Chat Panel -->
-<div id="chatPanel"
-  class="fixed bottom-20 right-6 w-[340px] h-[70vh] bg-white border border-gray-300 shadow-2xl rounded-xl flex flex-col transition-all duration-300 opacity-0 pointer-events-none transform scale-95">
-  <div class="bg-indigo-600 text-white flex justify-between items-center py-2 px-3 font-semibold rounded-t-xl">
-    <span>💬 Teklif Mesajlaşması</span>
-    <button id="chatCloseBtn" class="text-white text-xl font-bold hover:text-gray-200 transition">×</button>
-  </div>
-
-  <div id="chatMessages" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-50">
-    {% for msg in req.offer_messages %}
-    <div class="flex {% if msg.sender == 'yönetici' %}justify-end{% else %}justify-start{% endif %}">
-      <div class="max-w-[75%] p-3 rounded-2xl shadow-sm 
-                  {% if msg.sender == 'yönetici' %}bg-indigo-500 text-white rounded-br-none{% else %}bg-gray-200 text-gray-800 rounded-bl-none{% endif %}">
-        <div class="text-sm leading-snug">{{ msg.text }}</div>
-        <div class="text-[11px] mt-1 opacity-80 text-right">
-          {{ msg.sender_name }} • {{ msg.time }}
-        </div>
+      <div class="flex gap-2">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition">🖾 Teklifi Kaydet</button>
+        <a href="{{ url_for('admin_offer_pdf', req_id=req.id) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition">PDF Olarak İndir</a>
       </div>
     </div>
-    {% endfor %}
-  </div>
-
-  <form id="chatForm" 
-        action="{{ url_for('admin_offer_chat', req_id=req.id) }}" 
-        method="POST" enctype="multipart/form-data"
-        class="border-t bg-white p-2 flex items-center gap-2">
-    <textarea name="message" rows="1" 
-              class="flex-1 border rounded-lg p-2 text-sm resize-none focus:ring focus:ring-indigo-200" 
-              placeholder="Mesaj yaz..."></textarea>
-    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">
-      ➤
-    </button>
   </form>
 </div>
 
-<style>
-#chatMessages::-webkit-scrollbar { width: 6px; }
-#chatMessages::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
-#chatPanel.open { opacity: 1; pointer-events: auto; transform: scale(1); bottom: 90px; }
-</style>
-
 <script>
-// 💬 Chat JS
-const chatPanel = document.getElementById("chatPanel");
-const chatToggleBtn = document.getElementById("chatToggleBtn");
-const chatCloseBtn = document.getElementById("chatCloseBtn");
-const chatForm = document.getElementById("chatForm");
-const chatMessages = document.getElementById("chatMessages");
-const chatBubble = document.getElementById("chatBubble");
-
-chatToggleBtn.addEventListener("click", () => {
-  chatPanel.classList.add("open");
-  chatBubble.style.display = "none";
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-});
-chatCloseBtn.addEventListener("click", () => {
-  chatPanel.classList.remove("open");
-  setTimeout(() => chatBubble.style.display = "flex", 300);
-});
-chatForm.querySelector('textarea').addEventListener('keydown', function (e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    chatForm.requestSubmit();
-  }
-});
-chatForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const formData = new FormData(chatForm);
-  const response = await fetch(chatForm.action, { method: "POST", body: formData });
-  if (response.ok) {
-    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const text = formData.get("message");
-    const newMsg = document.createElement("div");
-    newMsg.className = "flex justify-end";
-    newMsg.innerHTML = `
-      <div class="max-w-[75%] p-3 rounded-2xl bg-indigo-500 text-white rounded-br-none shadow-sm">
-        <div class="text-sm leading-snug">${text}</div>
-        <div class="text-[11px] mt-1 opacity-80 text-right">Yönetici • ${now}</div>
-      </div>`;
-    chatMessages.appendChild(newMsg);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-    chatForm.reset();
-  }
-});
-window.addEventListener("load", () => {
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+// Satır ekleme
+const addBtn = document.getElementById('addProductBtn');
+addBtn?.addEventListener('click', () => {
+  const tbody = document.querySelector('#priceTable tbody');
+  const newRow = document.createElement('tr');
+  newRow.className = 'border-t hover:bg-gray-50';
+  newRow.innerHTML = `
+    <td class="px-3 py-2"><input type="text" name="desc[]" class="border rounded px-2 py-1 w-full" placeholder="Açıklama"></td>
+    <td class="px-3 py-2"><input type="text" name="code[]" class="border rounded px-2 py-1 w-full" placeholder="Ürün Kodu"></td>
+    <td class="px-3 py-2"><input type="text" name="brand[]" class="border rounded px-2 py-1 w-full" placeholder="Marka"></td>
+    <td class="px-3 py-2"><input type="text" name="qty[]" class="border rounded px-2 py-1 w-16 text-center" placeholder="Miktar"></td>
+    <td class="px-3 py-2 text-right"><input type="number" min="0" step="0.01" name="price[]" class="border rounded px-2 py-1 w-24 text-right" placeholder="0.00" oninput="updateTotals()"></td>
+    <td class="px-3 py-2 text-right kdv-cell">0.00</td>
+    <td class="px-3 py-2 text-right subtotal-cell">0.00</td>
+    <td class="px-3 py-2 text-center"><button type="button" data-row-delete class="text-red-600 hover:text-red-800">✕</button></td>
+  `;
+  tbody.appendChild(newRow);
 });
 
-// 🔢 KDV ve Toplam Hesaplama
-function updateTotals() {
-  const rows = document.querySelectorAll("#priceTable tbody tr");
-  let totalWithoutKdv = 0;
-  let totalWithKdv = 0;
-
-  rows.forEach(row => {
-    const qty = parseFloat(row.children[3].textContent) || 0;
-    const priceInput = row.querySelector("input[name='price[]']");
-    const price = parseFloat(priceInput.value) || 0;
-    const kdv = price * 1.2;
-    const subtotal = kdv * qty;
-
-    row.querySelector(".kdv-cell").textContent = kdv.toFixed(2);
-    row.querySelector(".subtotal-cell").textContent = subtotal.toFixed(2);
-
-    totalWithoutKdv += price * qty;
-    totalWithKdv += subtotal;
-  });
-
-  const totalKdv = totalWithKdv - totalWithoutKdv;
-  document.getElementById("totalWithoutKdv").textContent = totalWithoutKdv.toFixed(2) + " ₺";
-  document.getElementById("totalKdv").textContent = totalKdv.toFixed(2) + " ₺";
-  document.getElementById("grandTotal").textContent = totalWithKdv.toFixed(2) + " ₺";
+// Hesaplama fonksiyonu
+function toNum(v){ if(!v)return 0; v=String(v).replace(',', '.'); return parseFloat(v)||0; }
+function updateRowTotals(row){
+  const qty=toNum(row.querySelector("input[name='qty[]']")?.value);
+  const price=toNum(row.querySelector("input[name='price[]']")?.value);
+  const kdv=price*1.2, subtotal=kdv*qty;
+  row.querySelector('.kdv-cell').textContent=kdv.toFixed(2);
+  row.querySelector('.subtotal-cell').textContent=subtotal.toFixed(2);
+  return {qty,price,subtotal};
 }
-window.addEventListener("load", updateTotals);
-</script>
+function updateTotals(){
+  const rows=document.querySelectorAll('#priceTable tbody tr');
+  let tNoKdv=0,tWithKdv=0;
+  rows.forEach(r=>{const{qty,price,subtotal}=updateRowTotals(r);tNoKdv+=price*qty;tWithKdv+=subtotal;});
+  document.getElementById('totalWithoutKdv').textContent=tNoKdv.toFixed(2)+' ₺';
+  document.getElementById('totalKdv').textContent=(tWithKdv-tNoKdv).toFixed(2)+' ₺';
+  document.getElementById('grandTotal').textContent=tWithKdv.toFixed(2)+' ₺';
+}
 
+// Event delegation
+const table=document.getElementById('priceTable');
+table?.addEventListener('input',e=>{if(e.target.matches("input[name='qty[]'],input[name='price[]']"))updateTotals();});
+table?.addEventListener('click',e=>{const b=e.target.closest('[data-row-delete]');if(b){b.closest('tr').remove();updateTotals();}});
+window.addEventListener('load',updateTotals);
+</script>
 {% endblock %}

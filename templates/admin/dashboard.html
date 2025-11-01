@@ -84,4 +84,24 @@
     });
   }
 </script>
+<script>
+function assignAdmin(reqId, adminName) {
+  if (!adminName) return;
+
+  fetch(`/admin/assign/${reqId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ admin: adminName })
+  })
+  .then(res => {
+    if (res.ok) {
+      console.log("✅ Yönetici atandı:", adminName);
+    } else {
+      console.error("❌ Yönetici atama başarısız.");
+    }
+  })
+  .catch(err => console.error("Fetch hatası:", err));
+}
+</script>
+
 {% endblock %}

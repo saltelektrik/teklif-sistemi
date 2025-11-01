@@ -140,7 +140,6 @@ def dashboard():
     user_requests = [r for r in requests_data if r["email"] == user["email"]]
     return render_template("client/dashboard.html", user=user, requests=user_requests)
 
-# 📩 Talep gönder
 @app.route("/submit", methods=["POST"])
 @login_required
 def submit_request():
@@ -150,23 +149,95 @@ def submit_request():
     brand = request.form.getlist("brand[]")
     qty = request.form.getlist("qty[]")
     message = request.form.get("message", "")
+
+    # 📎 Dosya yükleme kısmı
+    file = request.files.get("file")
+    file_path = None
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+        file_path = f"/static/uploads/{filename}"
+
+    # 🧾 Ürün listesi oluştur
+    products = []
+    for d, c, b, q in zip(desc, code, brand, qty):
+        if d or c or b or q:
+            products.append({
+                "desc": d.strip(),
+                "code": c.strip(),
+                "brand": b.strip(),
+                "qty": q.strip(),
+            })
+
+    # 🆕 Eğer müşteri ürün eklemediyse boş ürün alanı oluştur
+    if not products:
+        products = [{
+            "desc": "",
+            "code": "",
+            "brand": "",
+            "qty": ""
+        }]
+
+    # 💬 Talep verisi
     req = {
         "id": len(requests_data) + 1,
         "name": user["name"],
         "email": user["email"],
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        # İKİ AYRI HAT
         "request_messages": [
-            {"sender": "müşteri", "sender_name": user["name"], "text": message, "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+            {
+                "sender": "müşteri",
+                "sender_name": user["name"],
+                "text": message.strip(),
+                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "file": file_path,
+            }
         ],
         "offer_messages": [],
         "status": "new",
-        "products": [{"desc": d, "code": c, "brand": b, "qty": q} for d, c, b, q in zip(desc, code, brand, qty)],
+        "products": products,  # 🆕 her durumda dolu
     }
+
+    # 💾 Kaydet
     requests_data.append(req)
     save_requests()
     flash("Talebiniz başarıyla gönderildi.")
     return redirect(url_for("dashboard"))
+
+@app.route("/edit/<int:req_id>", methods=["GET", "POST"])
+@login_required
+def edit_request(req_id):
+    user = get_current_user()
+    req = next((r for r in requests_data if r["id"] == req_id and r["email"] == user["email"]), None)
+
+    if not req:
+        flash("Talep bulunamadı veya düzenleme yetkiniz yok.")
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        # Yeni verileri al
+        desc = request.form.getlist("desc[]")
+        code = request.form.getlist("code[]")
+        brand = request.form.getlist("brand[]")
+        qty = request.form.getlist("qty[]")
+        message = request.form.get("message", "").strip()
+
+        # Ürünleri güncelle
+        req["products"] = [
+            {"desc": d, "code": c, "brand": b, "qty": q}
+            for d, c, b, q in zip(desc, code, brand, qty)
+        ]
+
+        # Talep notunu güncelle
+        if req["request_messages"]:
+            req["request_messages"][0]["text"] = message
+
+        save_requests()
+        flash("Talep başarıyla güncellendi.")
+        return redirect(url_for("status", req_id=req_id))
+
+    # Sayfa ilk yüklendiğinde mevcut verileri gönder
+    return render_template("client/edit_request.html", req=req, user=user)
 
 # 💬 Müşteri mesajlaşma
 @app.route("/status/<int:req_id>", methods=["GET", "POST"])
@@ -213,17 +284,50 @@ def admin_dashboard():
     import json
 
     # 🔹 En güncel talepleri JSON dosyasından yeniden yükle
+    # ◇ En güncel talepleri JSON dosyasından yeniden yükle
     try:
         with open("data/requests.json", "r", encoding="utf-8") as f:
             requests_data = json.load(f)
-            print(f"📂 Dashboard için {len(requests_data)} kayıt yüklendi.")
+
+        # Eski veri formatlarını yeni anahtarlara dönüştür (mail + portal uyumu)
+        for r in requests_data:
+            if "messages" in r and "request_messages" not in r:
+                r["request_messages"] = r["messages"]
+
+        print(f"🗂️ Dashboard için {len(requests_data)} kayıt yüklendi.")
+
     except Exception as e:
         print("⚠️ Dashboard veri yükleme hatası:", e)
         requests_data = []
 
+
     user = get_current_user()
     return render_template("admin/dashboard.html", requests=requests_data, user=user, users=users)
 
+from flask import jsonify, request
+
+@app.route("/admin/assign/<int:req_id>", methods=["POST"])
+def admin_assign(req_id):
+    data = request.get_json()
+    selected_admin = data.get("admin")
+
+    try:
+        with open("data/requests.json", "r+", encoding="utf-8") as f:
+            requests_data = json.load(f)
+            for req in requests_data:
+                if req["id"] == req_id:
+                    req["assigned_admin"] = selected_admin
+                    break
+            f.seek(0)
+            json.dump(requests_data, f, ensure_ascii=False, indent=4)
+            f.truncate()
+
+        print(f"👤 Talep {req_id} için yönetici atandı: {selected_admin}")
+        return jsonify({"success": True}), 200
+
+    except Exception as e:
+        print("⚠️ Yönetici atama hatası:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/admin/request/<int:req_id>")
 @admin_required
@@ -372,7 +476,7 @@ def admin_login():
         return redirect(url_for("admin_dashboard"))
     return render_template("admin/login.html")
 
-# 💾 Teklif kaydetme (admin) — temiz sürüm
+# 💾 Teklif kaydetme (admin) — Geliştirilmiş sürüm
 @app.route("/admin/save_offer/<int:req_id>", methods=["POST"])
 @admin_required
 def admin_save_offer(req_id):
@@ -382,11 +486,17 @@ def admin_save_offer(req_id):
         flash("Talep bulunamadı.")
         return redirect(url_for("admin_dashboard"))
 
-    # 1) Form verileri
+    # 1️⃣ Form verileri
     raw_prices = request.form.getlist("price[]")
     offer_text = request.form.get("offer_text", "").strip()
 
-    # 2) Dosya (isteğe bağlı)
+    # 🧾 Ürün verilerini de al (admin yeni eklediyse)
+    descs = request.form.getlist("desc[]")
+    codes = request.form.getlist("code[]")
+    brands = request.form.getlist("brand[]")
+    qtys = request.form.getlist("qty[]")
+
+    # 2️⃣ Dosya (isteğe bağlı)
     file = request.files.get("file")
     file_path = None
     if file and allowed_file(file.filename):
@@ -394,7 +504,21 @@ def admin_save_offer(req_id):
         file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
         file_path = f"/static/uploads/{filename}"
 
-    # 3) Fiyat parse
+    # 3️⃣ Ürün listesini yeniden oluştur (admin eklediklerini dahil et)
+    products = []
+    for d, c, b, q in zip(descs, codes, brands, qtys):
+        if d or c or b or q:  # boş satırları alma
+            products.append({
+                "desc": d.strip(),
+                "code": c.strip(),
+                "brand": b.strip(),
+                "qty": q.strip()
+            })
+
+    # Eğer admin ürünleri tamamen boşalttıysa, yine boş liste tut
+    req["products"] = products if products else []
+
+    # 4️⃣ Fiyat parse
     prices = []
     for p in raw_prices:
         try:
@@ -402,16 +526,15 @@ def admin_save_offer(req_id):
         except (ValueError, TypeError):
             prices.append(0.0)
 
-    # 4) Hesaplamalar
+    # 5️⃣ Hesaplamalar
     kdv_orani = 0.20
     req_prices, kdv_dahil, ara_toplamlar = [], [], []
     toplam = 0.0
-    products = req.get("products", [])
 
-    for i, prod in enumerate(products):
+    for i, prod in enumerate(req["products"]):
         fiyat = prices[i] if i < len(prices) else 0.0
         try:
-            adet = float(str(prod.get("qty", "0")).replace(",", "."))
+            adet = float(str(prod.get("qty", "0")).replace(",", ".")) or 0.0
         except (ValueError, TypeError):
             adet = 0.0
 
@@ -423,15 +546,17 @@ def admin_save_offer(req_id):
         ara_toplamlar.append(satir_toplam)
         toplam += satir_toplam
 
+    # 6️⃣ En az bir ürün fiyatı girilmeli
     if all(f == 0 for f in req_prices):
         flash("En az bir ürün fiyatı girilmelidir.")
         return redirect(url_for("admin_request_detail", req_id=req_id))
 
-    # 5) Kalıcı kaydet
+    # 7️⃣ Kalıcı kaydet
     req["prices"] = req_prices
     req["kdv_dahil"] = kdv_dahil
     req["ara_toplamlar"] = ara_toplamlar
     req["toplam"] = round(toplam, 2)
+    req["offer_note"] = offer_text
 
     # 🔄 Durum güncelleme
     if req.get("status") in [None, "Yeni", "new"]:
@@ -439,10 +564,7 @@ def admin_save_offer(req_id):
     elif req.get("status") != "Kapalı":
         req["status"] = "Teklif Hazır"
 
-    req["offer_note"] = offer_text
-    save_requests()
-
-    # 6) Mesaj geçmişine bilgi düş
+    # 💬 Mesaj geçmişine bilgi düş
     req.setdefault("offer_messages", [])
     req["offer_messages"].append({
         "sender": "yönetici",
@@ -455,18 +577,6 @@ def admin_save_offer(req_id):
     save_requests()
     flash("Teklif başarıyla kaydedildi.")
     return redirect(url_for("admin_request_detail", req_id=req_id))
-
-# ------------------------
-#  ReportLab importları
-# ------------------------
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-
-# ------------------------
-#  PDF OLUŞTUR + MAİL GÖNDER
-# ------------------------
-import smtplib
-from email.message import EmailMessage
 
 @app.route("/admin/offer_pdf/<int:req_id>")
 @admin_required
@@ -482,33 +592,29 @@ def admin_offer_pdf(req_id):
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 
-# Türkçe karakter desteği
+    # Türkçe karakter desteği
     pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
     pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'DejaVuSans-Bold.ttf'))
 
     req = next((r for r in requests_data if r["id"] == req_id), None)
-    print("PDF oluşturuluyor:", req)
     if not req:
         flash("Teklif bulunamadı.")
         return redirect(url_for("admin_dashboard"))
-    
+
     pdf_path = os.path.join("static", "uploads", f"teklif_{req_id}.pdf")
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
     doc = SimpleDocTemplate(pdf_path, pagesize=A4)
     elements = []
     styles = getSampleStyleSheet()
     styles["Normal"].fontName = 'DejaVuSans'
     styles["Title"].fontName = 'DejaVuSans'
 
-        # 🔹 LOGO ve başlık
-    logo_path = os.path.join("static", "uploads", "HD LOGO 4K.png")  # logo dosyasının yolu
+    # 🔹 LOGO ve başlık
+    logo_path = os.path.join("static", "uploads", "HD LOGO 4K.png")
     if os.path.exists(logo_path):
-        elements.append(Image(logo_path, width=4*cm, height=4*cm))
-    elements.append(Spacer(1, 0.5*cm))
+        elements.append(Image(logo_path, width=4 * cm, height=4 * cm))
+    elements.append(Spacer(1, 0.5 * cm))
     elements.append(Paragraph("<b>ŞALT ELEKTRİK</b> - Teklif Formu", styles["Title"]))
-    elements.append(Spacer(1, 0.3*cm))
+    elements.append(Spacer(1, 0.3 * cm))
 
     # 🔹 Üst Bilgiler
     details = f"""
@@ -518,11 +624,9 @@ def admin_offer_pdf(req_id):
     <b>Teklif No:</b> #{req_id}<br/>
     """
     elements.append(Paragraph(details, styles["Normal"]))
-    elements.append(Spacer(1, 0.5*cm))
+    elements.append(Spacer(1, 0.5 * cm))
 
     # 🔹 Ürün Tablosu
-    from reportlab.platypus import Paragraph
-
     data = [["Sıra", "Ürün Açıklaması", "Kod", "Marka", "Adet", "Birim Fiyat", "KDV Dahil", "Tutar"]]
     products = req.get("products", [])
     prices = req.get("prices", [])
@@ -545,16 +649,15 @@ def admin_offer_pdf(req_id):
             f"{ara_toplam[i]:.2f} ₺" if i < len(ara_toplam) else "-"
         ])
 
-    # 🔹 Tablo stili
     table = Table(
         data,
-        colWidths=[1*cm, 5*cm, 2.5*cm, 3*cm, 1.5*cm, 2.5*cm, 2.5*cm, 3*cm]
+        colWidths=[1 * cm, 5 * cm, 2.5 * cm, 3 * cm, 1.5 * cm, 2.5 * cm, 2.5 * cm, 3 * cm]
     )
     table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'DejaVuSans'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('ALIGN', (1, 1), (1, -1), 'LEFT'),  # Ürün açıklamaları sola hizalı
+        ('ALIGN', (1, 1), (1, -1), 'LEFT'),
         ('WORDWRAP', (0, 0), (-1, -1), True),
         ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -563,8 +666,16 @@ def admin_offer_pdf(req_id):
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
     ]))
     elements.append(table)
-    elements.append(Spacer(1, 0.5*cm))
+    elements.append(Spacer(1, 0.5 * cm))
 
+    # 🔹 Teklif Notu (varsa PDF'e ekle)
+    offer_note = req.get("offer_note", "").strip()
+    if offer_note:
+        elements.append(Spacer(1, 0.3 * cm))
+        elements.append(Paragraph("<b>Teklif Notu:</b>", styles["Normal"]))
+        elements.append(Spacer(1, 0.1 * cm))
+        elements.append(Paragraph(offer_note.replace("\n", "<br/>"), styles["Normal"]))
+        elements.append(Spacer(1, 0.5 * cm))
 
     # 🔹 Açıklamalar
     notes = """
@@ -577,8 +688,8 @@ def admin_offer_pdf(req_id):
 
     doc.build(elements)
 
-        # ✅ Mail gönder
-    sender_email = "teklif@e-saltelektrik.com"
+    # ✅ Mail gönder
+    sender_email = "teklif@e-saltelefktrik.com"
     sender_password = "KampanyaXmail0217"
     to_email = req.get("email")
 
@@ -622,6 +733,5 @@ run_mail_listener()
 # Flask uygulamasını başlat
 if __name__ == "__main__":
     app.run(debug=True)
-
 
 

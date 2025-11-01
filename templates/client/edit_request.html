@@ -1,0 +1,65 @@
+{% extends "client/base_client.html" %}
+{% block title %}Talebi Düzenle{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-gray-800 mb-6">✏️ Talebi Düzenle</h1>
+
+<form action="{{ url_for('edit_request', req_id=req.id) }}" method="POST" enctype="multipart/form-data"
+      class="bg-white p-6 rounded-xl shadow-md space-y-4">
+
+  <!-- 🧾 Ürün Listesi -->
+  <div>
+    <h3 class="text-lg font-semibold text-gray-800 mb-2">Ürün Listesi</h3>
+    <div id="productList" class="space-y-2">
+      {% for p in req.products %}
+      <div class="grid grid-cols-4 gap-2">
+        <input type="text" name="desc[]" value="{{ p.desc }}" placeholder="Açıklama" class="border p-2 rounded">
+        <input type="text" name="code[]" value="{{ p.code }}" placeholder="Ürün Kodu" class="border p-2 rounded">
+        <input type="text" name="brand[]" value="{{ p.brand }}" placeholder="Marka" class="border p-2 rounded">
+        <input type="text" name="qty[]" value="{{ p.qty }}" placeholder="Miktar" class="border p-2 rounded">
+      </div>
+      {% endfor %}
+    </div>
+
+    <button type="button" id="addProductBtn"
+            class="mt-2 bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 text-sm">
+      + Ürün Ekle
+    </button>
+  </div>
+
+  <!-- 💬 Talep Notu -->
+  <div>
+    <label class="block font-medium mb-1 text-gray-700">Talep Notu:</label>
+    <textarea name="message" rows="4" class="w-full border rounded p-2 focus:ring focus:ring-indigo-200"
+              placeholder="Talep açıklamanız...">{{ req.request_messages[0].text if req.request_messages }}</textarea>
+  </div>
+
+  <!-- 📎 Dosya yükleme -->
+  <div>
+    <label class="block font-medium mb-1 text-gray-700">Dosya (isteğe bağlı):</label>
+    <input type="file" name="file" class="border rounded p-2 w-full">
+  </div>
+
+  <div class="flex justify-between items-center mt-6">
+    <a href="{{ url_for('status', req_id=req.id) }}" class="text-gray-600 hover:underline">← Geri Dön</a>
+    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow">
+      💾 Değişiklikleri Kaydet
+    </button>
+  </div>
+</form>
+
+<script>
+document.getElementById("addProductBtn").addEventListener("click", () => {
+  const list = document.getElementById("productList");
+  const div = document.createElement("div");
+  div.className = "grid grid-cols-4 gap-2";
+  div.innerHTML = `
+    <input type="text" name="desc[]" placeholder="Açıklama" class="border p-2 rounded">
+    <input type="text" name="code[]" placeholder="Ürün Kodu" class="border p-2 rounded">
+    <input type="text" name="brand[]" placeholder="Marka" class="border p-2 rounded">
+    <input type="text" name="qty[]" placeholder="Miktar" class="border p-2 rounded">
+  `;
+  list.appendChild(div);
+});
+</script>
+{% endblock %}

@@ -6,24 +6,85 @@ import time
 import ssl
 import json
 import os
+import re
 
-# 📂 JSON dosyası — main.py ile aynı veri kaynağı
+# 📁 Klasör yapısı
 os.makedirs("data", exist_ok=True)
+os.makedirs("static/uploads/mail_attachments", exist_ok=True)
 DATA_FILE = "data/requests.json"
 
-# --- Natro Kurumsal Eposta Bilgileri ---
 EMAIL = "teklif@e-saltelektrik.com"
-PASSWORD = "KampanyaXmail0217"  # mail hesabının parolasını gir
+PASSWORD = "KampanyaXmail0217"
 IMAP_SERVER = "mail.kurumsaleposta.com"
 IMAP_PORT = 993
 
 
+def _decode_str(s):
+    if not s:
+        return ""
+    parts = decode_header(s)
+    out = []
+    for p, enc in parts:
+        if isinstance(p, bytes):
+            out.append(p.decode(enc or "utf-8", errors="ignore"))
+        else:
+            out.append(p)
+    return "".join(out)
+
+
+def _extract_plain_text(msg):
+    """Mesaj gövdesini sade metin olarak çıkar."""
+    if msg.is_multipart():
+        for part in msg.walk():
+            ctype = part.get_content_type()
+            disp = str(part.get("Content-Disposition") or "")
+            if ctype == "text/plain" and "attachment" not in disp:
+                try:
+                    return part.get_payload(decode=True).decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
+        for part in msg.walk():
+            if part.get_content_type() == "text/html":
+                try:
+                    html = part.get_payload(decode=True).decode("utf-8", errors="ignore")
+                    html = re.sub(r"<br\s*/?>", "\n", html)
+                    return re.sub(r"<[^>]+>", "", html)
+                except Exception:
+                    pass
+    else:
+        try:
+            return msg.get_payload(decode=True).decode("utf-8", errors="ignore")
+        except Exception:
+            return ""
+    return ""
+
+
+def _extract_attachments(msg):
+    """E-posta içindeki ekleri 'static/uploads/mail_attachments' klasörüne kaydeder."""
+    saved_files = []
+    for part in msg.walk():
+        ctype = part.get_content_type()
+        disp = str(part.get("Content-Disposition") or "")
+        if "attachment" in disp:
+            filename = part.get_filename()
+            if filename:
+                filename = _decode_str(filename)
+                safe_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", filename)
+                file_path = os.path.join("static/uploads/mail_attachments", safe_name)
+                try:
+                    with open(file_path, "wb") as f:
+                        f.write(part.get_payload(decode=True))
+                    saved_files.append(f"/static/uploads/mail_attachments/{safe_name}")
+                    print(f"📎 Ek kaydedildi: {file_path}")
+                except Exception as e:
+                    print(f"⚠️ Ek kaydedilemedi ({filename}): {e}")
+    return saved_files
+
+
 def check_emails(requests_data):
-    """Kurumsal e-posta kutusunu kontrol eder ve yeni mailleri requests_data listesine ekler."""
     try:
         context = ssl.create_default_context()
-        context.options |= 0x4  # SSL_OP_LEGACY_SERVER_CONNECT
-
+        context.options |= 0x4
         mail = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT, ssl_context=context)
         mail.login(EMAIL, PASSWORD)
         print("✅ IMAP bağlantısı başarılı:", EMAIL)
@@ -31,75 +92,77 @@ def check_emails(requests_data):
 
         status, messages = mail.search(None, "UNSEEN")
         mail_ids = messages[0].split()
-        print("📥 Mail kutusu içeriği:", len(mail_ids), "adet mail bulundu.")
+        print("📥 Yeni mail sayısı:", len(mail_ids))
 
-        for num in mail_ids[-3:]:
-            _, data = mail.fetch(num, "(RFC822)")
-            msg = email.message_from_bytes(data[0][1])
-            mail.store(num, '+FLAGS', '\\Seen')
-
-            subject, encoding = decode_header(msg["Subject"])[0]
-            if isinstance(subject, bytes):
-                subject = subject.decode(encoding or "utf-8", errors="ignore")
-            sender = msg.get("From")
-            print("📨 Yeni mail kontrol ediliyor:", subject)
-
-            # İçerik çözümleme
-            body = ""
-            if msg.is_multipart():
-                for part in msg.walk():
-                    ctype = part.get_content_type()
-                    disp = str(part.get("Content-Disposition"))
-                    if ctype == "text/plain" and "attachment" not in disp:
-                        body += part.get_payload(decode=True).decode("utf-8", errors="ignore")
-                        break
-            else:
-                body = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
-
-            # Eğer mail zaten eklenmişse tekrar ekleme
-            if any(subject in r["messages"][0]["text"] for r in requests_data if r["messages"]):
-                continue
-
-            # Yeni talep kaydı oluştur
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            new_request = {
-                "id": len(requests_data) + 1,
-                "user_id": 0,
-                "name": sender,
-                "email": sender,
-                "messages": [{
-                    "sender": "müşteri",
-                    "text": f"📧 Yeni e-posta teklifi: {subject}\n\n{body}",
-                    "image": None,
-                    "time": timestamp
-                }],
-                "status": "Yeni Talep",
-                "timestamp": timestamp
-            }
-
-            requests_data.append(new_request)
-
-            # JSON dosyasına kaydet (birikmeli - eskiler silinmez)
+        for num in mail_ids:
             try:
+                uid = num.decode()
+                res, msg_data = mail.fetch(num, "(RFC822)")
+                if res != "OK" or not msg_data or not msg_data[0]:
+                    print(f"⚠️ UID {uid}: Mail verisi alınamadı.")
+                    continue
+
+                raw_email = msg_data[0][1]
+                msg = email.message_from_bytes(raw_email)
+                mail.store(num, "+FLAGS", "\\Seen")
+
+                subject = _decode_str(msg.get("Subject"))
+                raw_from = _decode_str(msg.get("From") or "")
+                msg_id = msg.get("Message-ID") or f"uid-{uid}"
+                print(f"📨 Mail alındı: {subject}")
+
+                body = _extract_plain_text(msg).strip()
+                attachments = _extract_attachments(msg)
+
+                # Aynı UID veya Message-ID zaten varsa atla
+                if any(r.get("uid") == uid or r.get("msg_id") == msg_id for r in requests_data):
+                    print(f"⏭️ {subject} zaten mevcut, atlandı.")
+                    continue
+
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                new_request = {
+                    "id": int(datetime.now().timestamp() * 1000),
+                    "uid": uid,
+                    "msg_id": msg_id,
+                    "name": raw_from or "Bilinmeyen Gönderen",
+                    "email": raw_from or "bilinmiyor@e-posta.com",
+                    "timestamp": timestamp,
+                    "products": [],
+                    "status": "new",
+                    "request_messages": [
+                        {
+                            "sender": "müşteri",
+                            "sender_name": raw_from or "E-posta Gönderen",
+                            "text": f"📧 E-posta konusu: {subject}\n\n{body or '(Mesaj içeriği yok)'}",
+                            "file": attachments[0] if attachments else None,
+                            "attachments": attachments,
+                            "time": timestamp,
+                        }
+                    ],
+                    "offer_messages": [],
+                }
+
+                requests_data.append(new_request)
+                print(f"💾 Kaydedildi: {subject} ({new_request['id']})")
+
+                # JSON güncelle
                 if os.path.exists(DATA_FILE):
                     with open(DATA_FILE, "r+", encoding="utf-8") as f:
                         try:
-                            existing_data = json.load(f)
-                        except:
-                            existing_data = []
-
-                        existing_data.append(new_request)
+                            existing = json.load(f)
+                        except Exception:
+                            existing = []
+                        existing.append(new_request)
                         f.seek(0)
-                        json.dump(existing_data, f, ensure_ascii=False, indent=4)
+                        json.dump(existing, f, ensure_ascii=False, indent=4)
                         f.truncate()
-                        print("💾 Yeni talep eklendi:", subject)
                 else:
                     with open(DATA_FILE, "w", encoding="utf-8") as f:
                         json.dump([new_request], f, ensure_ascii=False, indent=4)
-                        print("💾 Yeni dosya oluşturuldu:", subject)
 
             except Exception as e:
-                print("⚠️ JSON kaydetme hatası:", e)
+                print(f"❌ Mail işleme hatası (UID {num}):", e)
+                continue
 
         mail.logout()
 
@@ -107,13 +170,16 @@ def check_emails(requests_data):
         print("❌ Mail okuma hatası:", e)
 
 
-# 🟢 Global değişken tanımla
 requests_data = []
 
 
 def start_listener():
     global requests_data
-    print("📬 Mail dinleme başlatıldı (Kurumsal Eposta)...")
+    print("📬 Mail dinleme başlatıldı...")
     while True:
-        check_emails(requests_data)
-        time.sleep(20)
+        try:
+            check_emails(requests_data)
+        except Exception as e:
+            print("⚠️ Listener hata verdi:", e)
+            time.sleep(10)
+        time.sleep(60)
