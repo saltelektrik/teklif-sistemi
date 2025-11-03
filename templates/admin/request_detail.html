@@ -35,7 +35,6 @@
 
   <!-- 🔁 Ürün Listesi -->
   <h3 class="text-lg font-semibold text-gray-800 mt-6 mb-3">🧾 Ürün Listesi</h3>
-
   <form action="{{ url_for('admin_save_offer', req_id=req.id) }}" method="POST" enctype="multipart/form-data">
     <div class="overflow-x-auto">
       <table class="w-full text-sm text-left border border-gray-200 rounded-lg" id="priceTable">
@@ -45,6 +44,7 @@
             <th class="px-3 py-2">Ürün Kodu</th>
             <th class="px-3 py-2">Marka</th>
             <th class="px-3 py-2">Miktar</th>
+            <th class="px-3 py-2">Teslim Süresi</th>
             <th class="px-3 py-2 text-right">Birim Fiyat (₺)</th>
             <th class="px-3 py-2 text-right">KDV Dahil (₺)</th>
             <th class="px-3 py-2 text-right">Ara Toplam (₺)</th>
@@ -56,11 +56,23 @@
             <tr><td colspan="8" class="text-center text-gray-500 py-3">⚠️ Bu talep müşteri notu üzerinden oluşturulmuştur, ürün listesi boş.</td></tr>
           {% endif %}
           {% for p in req.products %}
-          <tr class="border-t hover:bg-gray-50">
-            <td class="px-3 py-2"><input type="text" name="desc[]" value="{{ p.desc }}" class="border rounded px-2 py-1 w-full"></td>
-            <td class="px-3 py-2"><input type="text" name="code[]" value="{{ p.code }}" class="border rounded px-2 py-1 w-full"></td>
-            <td class="px-3 py-2"><input type="text" name="brand[]" value="{{ p.brand }}" class="border rounded px-2 py-1 w-full"></td>
-            <td class="px-3 py-2"><input type="text" name="qty[]" value="{{ p.qty }}" class="border rounded px-2 py-1 w-16 text-center"></td>
+<tr class="border-t hover:bg-gray-50">
+  <td class="px-3 py-2"><input type="text" name="desc[]" value="{{ p.desc }}" class="border rounded px-2 py-1 w-full"></td>
+  <td class="px-3 py-2"><input type="text" name="code[]" value="{{ p.code }}" class="border rounded px-2 py-1 w-full"></td>
+  <td class="px-3 py-2"><input type="text" name="brand[]" value="{{ p.brand }}" class="border rounded px-2 py-1 w-full"></td>
+  <td class="px-3 py-2"><input type="text" name="qty[]" value="{{ p.qty }}" class="border rounded px-2 py-1 w-16 text-center"></td>
+
+  <!-- 🟢 Yeni eklenen teslim süresi alanı -->
+  <td class="px-3 py-2">
+    <input
+      type="text"
+      name="delivery_time[]"
+      value="{{ p.delivery_time or '' }}"
+      placeholder="örnek: 3-5 gün"
+      class="border rounded px-2 py-1 text-sm w-full">
+  </td>
+
+
             <td class="px-3 py-2 text-right">
               <input type="number" min="0" step="0.01" name="price[]" class="border rounded px-2 py-1 w-24 text-right" value="{{ req.prices[loop.index0] if req.prices is defined and loop.index0 < req.prices|length else '' }}" oninput="updateTotals()">
             </td>
@@ -110,7 +122,6 @@
       <label class="block text-sm font-medium mb-1">Dosya Ekle (PDF, Excel, Resim vb.):</label>
       <input type="file" name="file" class="border rounded-lg p-2 w-full">
     </div>
-
     <div class="mt-6 flex justify-between items-center">
       {% if req.status != 'Kapalı' %}
         <a href="{{ url_for('admin_close', req_id=req.id) }}" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition">🚫 Talebi Kapat</a>
@@ -120,13 +131,52 @@
 
       <div class="flex gap-2">
         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition">🖾 Teklifi Kaydet</button>
-        <a href="{{ url_for('admin_offer_pdf', req_id=req.id) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition">PDF Olarak İndir</a>
-      </div>
+         <!-- Sadece PDF İndir -->
+  <a href="{{ url_for('admin_offer_pdf_only', req_id=req.id) }}"
+     class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition">
+     📄 PDF Olarak İndir
+  </a>
+
+  <!-- PDF Oluştur + Mail Gönder -->
+  <a href="{{ url_for('admin_offer_pdf', req_id=req.id) }}"
+     class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+     ✉️ PDF Oluştur ve Mail Gönder
+  </a>
+</div>
+<!-- 🧩 Ödeme – Teslim – Opsiyon SEÇİCİLER -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Ödeme Vadesi</label>
+    <select name="payment_term" class="w-full border border-gray-300 rounded-lg p-2">
+      <option value="Peşin" {% if req.get('payment_term') == 'Peşin' %}selected{% endif %}>Peşin</option>
+      <option value="7 Gün" {% if req.get('payment_term') == '7 Gün' %}selected{% endif %}>7 Gün</option>
+      <option value="15 Gün" {% if req.get('payment_term') == '15 Gün' %}selected{% endif %}>15 Gün</option>
+      <option value="30 Gün" {% if req.get('payment_term') == '30 Gün' %}selected{% endif %}>30 Gün</option>
+      <option value="45 Gün" {% if req.get('payment_term') == '45 Gün' %}selected{% endif %}>45 Gün</option>
+      <option value="60 Gün" {% if req.get('payment_term') == '60 Gün' %}selected{% endif %}>60 Gün</option>
+      <option value="90 Gün" {% if req.get('payment_term') == '90 Gün' %}selected{% endif %}>90 Gün</option>
+    </select>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Teklif Geçerlilik Süresi (Opsiyon)</label>
+    <select name="offer_option" class="w-full border border-gray-300 rounded-lg p-2">
+      <option value="7 Gün" {% if req.get('offer_option') == '7 Gün' %}selected{% endif %}>7 Gün</option>
+      <option value="10 Gün" {% if req.get('offer_option') == '10 Gün' %}selected{% endif %}>10 Gün</option>
+      <option value="15 Gün" {% if req.get('offer_option') == '15 Gün' %}selected{% endif %}>15 Gün</option>
+      <option value="30 Gün" {% if req.get('offer_option') == '30 Gün' %}selected{% endif %}>30 Gün</option>
+      <option value="45 Gün" {% if req.get('offer_option') == '45 Gün' %}selected{% endif %}>45 Gün</option>
+      <option value="60 Gün" {% if req.get('offer_option') == '60 Gün' %}selected{% endif %}>60 Gün</option>
+    </select>
+  </div>
+</div>
     </div>
   </form>
 </div>
 
+
 <script>
+  
 // Satır ekleme
 const addBtn = document.getElementById('addProductBtn');
 addBtn?.addEventListener('click', () => {
@@ -171,4 +221,5 @@ table?.addEventListener('input',e=>{if(e.target.matches("input[name='qty[]'],inp
 table?.addEventListener('click',e=>{const b=e.target.closest('[data-row-delete]');if(b){b.closest('tr').remove();updateTotals();}});
 window.addEventListener('load',updateTotals);
 </script>
+
 {% endblock %}

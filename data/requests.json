@@ -1,897 +1,128 @@
 [
-    {
-        "id": 1761913594,
-        "uid": "23",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 15:26:34",
-        "products": [],
-        "status": "new",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: test1\n\nTest11",
-                "file": null,
-                "time": "2025-10-31 15:26:34"
-            }
-        ],
-        "offer_messages": [],
-        "messages": []
-    },
-    {
-        "id": 1761913594,
-        "uid": "24",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 15:26:34",
-        "products": [],
-        "status": "new",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: test2\n\nTest22",
-                "file": null,
-                "time": "2025-10-31 15:26:34"
-            }
-        ],
-        "offer_messages": [],
-        "messages": []
-    },
-    {
-        "id": 1761913594,
-        "uid": "25",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 15:26:34",
-        "products": [],
-        "status": "new",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: test3\n\nTest33",
-                "file": null,
-                "time": "2025-10-31 15:26:34"
-            }
-        ],
-        "offer_messages": [],
-        "messages": []
-    },
-    {
-        "id": 1761914109,
-        "uid": "26",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 15:35:09",
-        "products": [],
-        "status": "new",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: FW: test1\n\nFrom: kampanya@saltelektrik.com <kampanya@saltelektrik.com> \r\nSent: Friday, October 31, 2025 3:26 PM\r\nTo: 'teklif@e-saltelektrik.com' <teklif@e-saltelektrik.com>\r\nSubject: test1\r\n\r\n \r\n\r\nTest11",
-                "file": null,
-                "time": "2025-10-31 15:35:09"
-            }
-        ],
-        "offer_messages": [],
-        "messages": []
-    },
-    {
-        "id": 1761914109,
-        "uid": "27",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 15:35:09",
-        "products": [],
-        "status": "new",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: FW: test2\n\nFrom: kampanya@saltelektrik.com <kampanya@saltelektrik.com> \r\nSent: Friday, October 31, 2025 3:26 PM\r\nTo: 'teklif@e-saltelektrik.com' <teklif@e-saltelektrik.com>\r\nSubject: test2\r\n\r\n \r\n\r\nTest22",
-                "file": null,
-                "time": "2025-10-31 15:35:09"
-            }
-        ],
-        "offer_messages": [],
-        "messages": []
-    },
-    {
-        "id": 1761914109,
-        "uid": "28",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 15:35:09",
-        "products": [],
-        "status": "new",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: FW: test3\n\nFrom: kampanya@saltelektrik.com <kampanya@saltelektrik.com> \r\nSent: Friday, October 31, 2025 3:26 PM\r\nTo: 'teklif@e-saltelektrik.com' <teklif@e-saltelektrik.com>\r\nSubject: test3\r\n\r\n \r\n\r\nTest33",
-                "file": null,
-                "time": "2025-10-31 15:35:09"
-            }
-        ],
-        "offer_messages": [],
-        "messages": []
-    },
-    {
-        "id": 1761914254489,
-        "uid": "29",
-        "msg_id": "<02d601dc4a63$17c7a590$4756f0b0$@saltelektrik.com>",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 15:37:34",
-        "products": [],
-        "status": "new",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: FW: test2\n\nFrom: kampanya@saltelektrik.com <kampanya@saltelektrik.com> \r\nSent: Friday, October 31, 2025 3:35 PM\r\nTo: 'teklif@e-saltelektrik.com' <teklif@e-saltelektrik.com>\r\nSubject: FW: test2\r\n\r\n \r\n\r\n \r\n\r\n \r\n\r\nFrom: kampanya@saltelektrik.com <mailto:kampanya@saltelektrik.com>\r\n<kampanya@saltelektrik.com <mailto:kampanya@saltelektrik.com> > \r\nSent: Friday, October 31, 2025 3:26 PM\r\nTo: 'teklif@e-saltelektrik.com' <teklif@e-saltelektrik.com\r\n<mailto:teklif@e-saltelektrik.com> >\r\nSubject: test2\r\n\r\n \r\n\r\nTest22",
-                "file": null,
-                "time": "2025-10-31 15:37:34"
-            }
-        ],
-        "offer_messages": [],
-        "messages": []
-    },
-    {
-        "id": 1761914254540,
-        "uid": "30",
-        "msg_id": "<02c901dc4a63$16374190$42a5c4b0$@saltelektrik.com>",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 15:37:34",
-        "products": [],
-        "status": "new",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: FW: test1\n\nFrom: kampanya@saltelektrik.com <kampanya@saltelektrik.com> \r\nSent: Friday, October 31, 2025 3:35 PM\r\nTo: 'teklif@e-saltelektrik.com' <teklif@e-saltelektrik.com>\r\nSubject: FW: test1\r\n\r\n \r\n\r\n \r\n\r\n \r\n\r\nFrom: kampanya@saltelektrik.com <mailto:kampanya@saltelektrik.com>\r\n<kampanya@saltelektrik.com <mailto:kampanya@saltelektrik.com> > \r\nSent: Friday, October 31, 2025 3:26 PM\r\nTo: 'teklif@e-saltelektrik.com' <teklif@e-saltelektrik.com\r\n<mailto:teklif@e-saltelektrik.com> >\r\nSubject: test1\r\n\r\n \r\n\r\nTest11",
-                "file": null,
-                "time": "2025-10-31 15:37:34"
-            }
-        ],
-        "offer_messages": [],
-        "messages": []
-    },
-    {
-        "id": 1761914254595,
-        "uid": "31",
-        "msg_id": "<02e301dc4a63$1a6f1ee0$4f4d5ca0$@saltelektrik.com>",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 15:37:34",
-        "products": [],
-        "status": "new",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: FW: test3\n\nFrom: kampanya@saltelektrik.com <kampanya@saltelektrik.com> \r\nSent: Friday, October 31, 2025 3:35 PM\r\nTo: 'teklif@e-saltelektrik.com' <teklif@e-saltelektrik.com>\r\nSubject: FW: test3\r\n\r\n \r\n\r\n \r\n\r\n \r\n\r\nFrom: kampanya@saltelektrik.com <mailto:kampanya@saltelektrik.com>\r\n<kampanya@saltelektrik.com <mailto:kampanya@saltelektrik.com> > \r\nSent: Friday, October 31, 2025 3:26 PM\r\nTo: 'teklif@e-saltelektrik.com' <teklif@e-saltelektrik.com\r\n<mailto:teklif@e-saltelektrik.com> >\r\nSubject: test3\r\n\r\n \r\n\r\nTest33",
-                "file": null,
-                "time": "2025-10-31 15:37:34"
-            }
-        ],
-        "offer_messages": [],
-        "messages": []
-    },
-    {
-        "id": 10,
-        "name": "Müşteri",
-        "email": "client@saltelektrik.com",
-        "timestamp": "2025-10-31 15:41:40",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "Müşteri",
-                "text": "qwewqeqwewqeqwewqeqweq",
-                "time": "2025-10-31 15:41:40"
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 1742.40 ₺\ntamamdır abi",
-                "file": null,
-                "time": "2025-10-31 15:49:41"
-            }
-        ],
-        "status": "Cevaplandı",
-        "products": [
-            {
-                "desc": "qwe",
-                "code": "qwe",
-                "brand": "qwe",
-                "qty": "11"
-            }
-        ],
-        "assigned_admin": "Yönetici 1",
-        "prices": [
-            132.0
-        ],
-        "kdv_dahil": [
-            158.4
-        ],
-        "ara_toplamlar": [
-            1742.4
-        ],
-        "toplam": 1742.4,
-        "offer_note": "tamamdır abi",
-        "messages": []
-    },
-    {
-        "id": 11,
-        "name": "Müşteri",
-        "email": "client@saltelektrik.com",
-        "timestamp": "2025-10-31 15:50:30",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "Müşteri",
-                "text": "abc1",
-                "time": "2025-10-31 15:50:30"
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 1359.60 ₺\nelimizde yok maalesef muadil önerildi.",
-                "file": null,
-                "time": "2025-10-31 15:51:08"
-            },
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 1359.60 ₺\nelimizde yok maalesef muadil önerildi.",
-                "file": "/static/uploads/WhatsApp_Gorsel_2025-10-17_saat_15.01.40_fbd92548.jpg",
-                "time": "2025-10-31 15:58:51"
-            }
-        ],
-        "status": "Teklif Hazır",
-        "products": [
-            {
-                "desc": "a",
-                "code": "b",
-                "brand": "c",
-                "qty": "1"
-            }
-        ],
-        "assigned_admin": "Yönetici 2",
-        "prices": [
-            1133.0
-        ],
-        "kdv_dahil": [
-            1359.6
-        ],
-        "ara_toplamlar": [
-            1359.6
-        ],
-        "toplam": 1359.6,
-        "offer_note": "elimizde yok maalesef muadil önerildi.",
-        "messages": []
-    },
-    {
-        "id": 12,
-        "name": "Müşteri",
-        "email": "client@saltelektrik.com",
-        "timestamp": "2025-10-31 16:00:24",
-        "status": "new",
-        "products": [
-            {
-                "desc": "q",
-                "code": "q",
-                "brand": "q",
-                "qty": "1"
-            }
-        ],
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "Müşteri",
-                "text": "q",
-                "time": "2025-10-31 16:00:24",
-                "file": null
-            }
-        ],
-        "offer_messages": [],
-        "assigned_admin": "Yönetici 1",
-        "messages": []
-    },
-    {
-        "id": 13,
-        "name": "Müşteri",
-        "email": "client@saltelektrik.com",
-        "timestamp": "2025-10-31 16:05:40",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "Müşteri",
-                "text": "qweqwe",
-                "time": "2025-10-31 16:05:40",
-                "file": null
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 13.20 ₺\n",
-                "file": null,
-                "time": "2025-10-31 16:06:00"
-            },
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 13.20 ₺\n",
-                "file": null,
-                "time": "2025-10-31 16:09:57"
-            }
-        ],
-        "status": "Teklif Hazır",
-        "products": [
-            {
-                "desc": "qweqw",
-                "code": "eqwe",
-                "brand": "qwe",
-                "qty": "1"
-            }
-        ],
-        "assigned_admin": "Yönetici 1",
-        "prices": [
-            11.0
-        ],
-        "kdv_dahil": [
-            13.2
-        ],
-        "ara_toplamlar": [
-            13.2
-        ],
-        "toplam": 13.2,
-        "offer_note": "",
-        "messages": []
-    },
-    {
-        "id": 14,
-        "name": "Müşteri",
-        "email": "client@saltelektrik.com",
-        "timestamp": "2025-10-31 16:10:15",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "Müşteri",
-                "text": "qwe",
-                "time": "2025-10-31 16:10:15",
-                "file": "/static/uploads/deneme.jpg"
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 3151.20 ₺\nqweq",
-                "file": null,
-                "time": "2025-10-31 16:15:43"
-            }
-        ],
-        "status": "Cevaplandı",
-        "products": [
-            {
-                "desc": "q",
-                "code": "q",
-                "brand": "q",
-                "qty": "2"
-            }
-        ],
-        "prices": [
-            1313.0
-        ],
-        "kdv_dahil": [
-            1575.6
-        ],
-        "ara_toplamlar": [
-            3151.2
-        ],
-        "toplam": 3151.2,
-        "offer_note": "qweq",
-        "assigned_admin": "Yönetici 1",
-        "messages": []
-    },
-    {
-        "id": 15,
-        "name": "Müşteri",
-        "email": "client@saltelektrik.com",
-        "timestamp": "2025-10-31 16:21:55",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "Müşteri",
-                "text": "resq",
-                "time": "2025-10-31 16:21:55",
-                "file": "/static/uploads/hata.png"
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 1603.20 ₺\nqwewq",
-                "file": null,
-                "time": "2025-10-31 16:39:28"
-            }
-        ],
-        "status": "Cevaplandı",
-        "products": [
-            {
-                "desc": "qwe",
-                "code": "qwe",
-                "brand": "qwe",
-                "qty": "1"
-            },
-            {
-                "desc": "qwe",
-                "code": "qwe",
-                "brand": "qe",
-                "qty": "1"
-            },
-            {
-                "desc": "1",
-                "code": "qw",
-                "brand": "1",
-                "qty": "3"
-            }
-        ],
-        "assigned_admin": "Yönetici 1",
-        "prices": [
-            1123.0,
-            213.0,
-            0.0
-        ],
-        "kdv_dahil": [
-            1347.6,
-            255.6,
-            0.0
-        ],
-        "ara_toplamlar": [
-            1347.6,
-            255.6,
-            0.0
-        ],
-        "toplam": 1603.2,
-        "offer_note": "qwewq",
-        "messages": []
-    },
-    {
-        "id": 1761918155309,
-        "uid": "33",
-        "msg_id": "<034101dc4a6c$142eb140$3c8c13c0$@saltelektrik.com>",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 16:42:35",
-        "products": [
-            {
-                "desc": "açıklama1",
-                "code": "ürünkodu1",
-                "brand": "marka1",
-                "qty": "123"
-            },
-            {
-                "desc": "açıklama2",
-                "code": "ürünkodu2",
-                "brand": "marka2",
-                "qty": "321"
-            }
-        ],
-        "status": "Cevaplandı",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: teklif denemeleri versiyon31\n\nselamlar",
-                "file": null,
-                "time": "2025-10-31 16:42:35"
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 532.80 ₺\nTeklif notu bölümü",
-                "file": "/static/uploads/qwe.jpg",
-                "time": "2025-10-31 16:43:16"
-            }
-        ],
-        "assigned_admin": "Yönetici 2",
-        "prices": [
-            1.0,
-            1.0
-        ],
-        "kdv_dahil": [
-            1.2,
-            1.2
-        ],
-        "ara_toplamlar": [
-            147.6,
-            385.2
-        ],
-        "toplam": 532.8,
-        "offer_note": "Teklif notu bölümü",
-        "messages": []
-    },
-    {
-        "id": 1761919946894,
-        "uid": "34",
-        "msg_id": "<037001dc4a70$5eface80$1cf06b80$@saltelektrik.com>",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 17:12:26",
-        "products": [
-            {
-                "desc": "açıklama1",
-                "code": "ürün1",
-                "brand": "marka1",
-                "qty": "1"
-            },
-            {
-                "desc": "açıklama2",
-                "code": "ürün2",
-                "brand": "marka2",
-                "qty": "2"
-            }
-        ],
-        "status": "Cevaplandı",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: teklif denemeleri\n\nTeklif atar msnz\r\n\r\n \r\n\r\n3 adet kablo",
-                "file": null,
-                "attachments": [],
-                "time": "2025-10-31 17:12:26"
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 70.80 ₺\nqweqwewq",
-                "file": null,
-                "time": "2025-10-31 17:14:35"
-            }
-        ],
-        "assigned_admin": "Yönetici 1",
-        "prices": [
-            13.0,
-            23.0
-        ],
-        "kdv_dahil": [
-            15.6,
-            27.6
-        ],
-        "ara_toplamlar": [
-            15.6,
-            55.2
-        ],
-        "toplam": 70.8,
-        "offer_note": "qweqwewq",
-        "messages": []
-    },
-    {
-        "id": 18,
-        "name": "Müşteri",
-        "email": "client@saltelektrik.com",
-        "timestamp": "2025-10-31 17:17:23",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "Müşteri",
-                "text": "qwewqeqwewresgfdthjkhgf",
-                "time": "2025-10-31 17:17:23",
-                "file": "/static/uploads/qwe.jpg"
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 16.56 ₺\nteklif notu kısmı",
-                "file": "/static/uploads/WhatsApp_Gorsel_2025-10-17_saat_15.01.40_fbd92548.jpg",
-                "time": "2025-10-31 17:18:14"
-            }
-        ],
-        "status": "Cevaplandı",
-        "products": [
-            {
-                "desc": "qweqwe",
-                "code": "qweqwe",
-                "brand": "wqeqwewq",
-                "qty": "1"
-            }
-        ],
-        "assigned_admin": "Yönetici 2",
-        "prices": [
-            13.8
-        ],
-        "kdv_dahil": [
-            16.56
-        ],
-        "ara_toplamlar": [
-            16.56
-        ],
-        "toplam": 16.56,
-        "offer_note": "teklif notu kısmı",
-        "messages": []
-    },
-    {
-        "id": 1761920610576,
-        "uid": "35",
-        "msg_id": "<038001dc4a71$e4ae2490$ae0a6db0$@saltelektrik.com>",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-10-31 17:23:30",
-        "products": [
-            {
-                "desc": "otomat",
-                "code": "sch",
-                "brand": "sch",
-                "qty": "1"
-            }
-        ],
-        "status": "Teklif Hazır",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: abd deneme\n\nAbd deneme - 1 adet",
-                "file": null,
-                "attachments": [],
-                "time": "2025-10-31 17:23:30"
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 158.40 ₺\nnakliye tarafınıza aittir.",
-                "file": null,
-                "time": "2025-10-31 17:24:22"
-            },
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 158.40 ₺\nnakliye tarafınıza aittir.",
-                "file": null,
-                "time": "2025-11-01 10:26:42"
-            }
-        ],
-        "assigned_admin": "Yönetici 1",
-        "prices": [
-            132.0
-        ],
-        "kdv_dahil": [
-            158.4
-        ],
-        "ara_toplamlar": [
-            158.4
-        ],
-        "toplam": 158.4,
-        "offer_note": "nakliye tarafınıza aittir.",
-        "messages": []
-    },
-    {
-        "id": 20,
-        "name": "Furkan Kıvrak",
-        "email": "kampanya@saltelektrik.com",
-        "timestamp": "2025-11-01 10:27:18",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "Furkan Kıvrak",
-                "text": "qweqweqw",
-                "time": "2025-11-01 10:27:18",
-                "file": "/static/uploads/hata.png"
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 3.60 ₺\ndeneme",
-                "file": "/static/uploads/qwe.jpg",
-                "time": "2025-11-01 10:29:21"
-            }
-        ],
-        "status": "Cevaplandı",
-        "products": [
-            {
-                "desc": "ta",
-                "code": "ta",
-                "brand": "ta",
-                "qty": "1"
-            },
-            {
-                "desc": "t",
-                "code": "t",
-                "brand": "t",
-                "qty": "2"
-            }
-        ],
-        "assigned_admin": "Yönetici 2",
-        "prices": [
-            1.0,
-            1.0
-        ],
-        "kdv_dahil": [
-            1.2,
-            1.2
-        ],
-        "ara_toplamlar": [
-            1.2,
-            2.4
-        ],
-        "toplam": 3.6,
-        "offer_note": "deneme",
-        "messages": []
-    },
-    {
-        "id": 21,
-        "name": "Furkan Kıvrak",
-        "email": "kampanya@saltelektrik.com",
-        "timestamp": "2025-11-01 10:40:00",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "Furkan Kıvrak",
-                "text": "qwe",
-                "time": "2025-11-01 10:40:00",
-                "file": null
-            }
-        ],
-        "offer_messages": [],
-        "status": "new",
-        "products": [
-            {
-                "desc": "qwe",
-                "code": "qwe",
-                "brand": "qwe",
-                "qty": "1"
-            }
-        ],
-        "messages": []
-    },
-    {
-        "id": 22,
-        "name": "Furkan Kıvrak",
-        "email": "furkan@saltelektrik.com",
-        "timestamp": "2025-11-01 10:56:04",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "Furkan Kıvrak",
-                "text": "qqeqeee",
-                "time": "2025-11-01 10:56:04",
-                "file": null
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 1623.60 ₺\n",
-                "file": "/static/uploads/qwe.jpg",
-                "time": "2025-11-01 10:58:19"
-            },
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 1623.60 ₺\nqwewqeqwe",
-                "file": null,
-                "time": "2025-11-01 10:59:02"
-            }
-        ],
-        "status": "Teklif Hazır",
-        "products": [
-            {
-                "desc": "qqwe",
-                "code": "q11",
-                "brand": "qqwe",
-                "qty": "123"
-            }
-        ],
-        "prices": [
-            11.0
-        ],
-        "kdv_dahil": [
-            13.2
-        ],
-        "ara_toplamlar": [
-            1623.6
-        ],
-        "toplam": 1623.6,
-        "offer_note": "qwewqeqwe"
-    },
-    {
-        "id": 23,
-        "name": "Furkan Kıvrak",
-        "email": "furkan@saltelektrik.com",
-        "timestamp": "2025-11-01 11:09:55",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "Furkan Kıvrak",
-                "text": "qweqweqweqe",
-                "time": "2025-11-01 11:09:55",
-                "file": null
-            }
-        ],
-        "offer_messages": [
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 172.80 ₺\nqweqwe",
-                "file": null,
-                "time": "2025-11-01 11:10:27"
-            },
-            {
-                "sender": "yönetici",
-                "sender_name": "Yönetici 1",
-                "text": "Yeni teklif hazırlandı. Toplam: 172.80 ₺\nqweqwe",
-                "file": "/static/uploads/qwe.jpg",
-                "time": "2025-11-01 11:13:47"
-            }
-        ],
-        "status": "Teklif Hazır",
-        "products": [
-            {
-                "desc": "qweqwe",
-                "code": "qweqweqwe",
-                "brand": "weqweqwesfdqwe",
-                "qty": "12"
-            }
-        ],
-        "assigned_admin": "Yönetici 1",
-        "prices": [
-            12.0
-        ],
-        "kdv_dahil": [
-            14.4
-        ],
-        "ara_toplamlar": [
-            172.8
-        ],
-        "toplam": 172.8,
-        "offer_note": "qweqwe"
-    },
-    {
-        "id": 1761985120966,
-        "uid": "36",
-        "msg_id": "<003e01dc4b08$156367d0$402a3770$@saltelektrik.com>",
-        "name": "<kampanya@saltelektrik.com>",
-        "email": "<kampanya@saltelektrik.com>",
-        "timestamp": "2025-11-01 11:18:40",
-        "products": [],
-        "status": "new",
-        "request_messages": [
-            {
-                "sender": "müşteri",
-                "sender_name": "<kampanya@saltelektrik.com>",
-                "text": "📧 E-posta konusu: fyat\n\nAbi fiyat verr msn",
-                "file": "/static/uploads/mail_attachments/Sorular.xlsx",
-                "attachments": [
-                    "/static/uploads/mail_attachments/Sorular.xlsx"
-                ],
-                "time": "2025-11-01 11:18:40"
-            }
-        ],
-        "offer_messages": [],
-        "assigned_admin": "Yönetici 1"
-    }
+  {
+    "id": 1,
+    "name": "Furkan Kıvrak",
+    "email": "furkan@saltelektrik.com",
+    "timestamp": "2025-11-03 15:00:56",
+    "request_messages": [
+      {
+        "sender": "müşteri",
+        "sender_name": "Furkan Kıvrak",
+        "text": "qweqf",
+        "time": "2025-11-03 15:00:56",
+        "file": null
+      }
+    ],
+    "offer_messages": [
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 133.20 ₺\nteklf",
+        "file": null,
+        "time": "2025-11-03 15:01:10"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 147.60 ₺\nteklf",
+        "file": null,
+        "time": "2025-11-03 15:01:27"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 147.60 ₺\nteklf",
+        "file": null,
+        "time": "2025-11-03 15:08:32"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 14787.60 ₺\nteklf",
+        "file": null,
+        "time": "2025-11-03 15:08:43"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 14787.60 ₺\nteklf",
+        "file": null,
+        "time": "2025-11-03 15:14:39"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 15.60 ₺\nDÜŞTÜ",
+        "file": null,
+        "time": "2025-11-03 16:33:28"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 15.60 ₺\nDÜŞTÜ",
+        "file": null,
+        "time": "2025-11-03 16:37:50"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 15.60 ₺\nDÜŞTÜ",
+        "file": null,
+        "time": "2025-11-03 16:43:58"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 15.60 ₺\nDÜŞTÜ",
+        "file": null,
+        "time": "2025-11-03 16:44:02"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 15.60 ₺\nDÜŞTÜ",
+        "file": null,
+        "time": "2025-11-03 16:44:05"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 15.60 ₺\nDÜŞTÜ",
+        "file": null,
+        "time": "2025-11-03 16:51:28"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 15.60 ₺\nDÜŞTÜ",
+        "file": null,
+        "time": "2025-11-03 17:03:04"
+      }
+    ],
+    "status": "Cevaplandı",
+    "products": [
+      {
+        "desc": "qwe",
+        "code": "qwe",
+        "brand": "qwe",
+        "qty": "1",
+        "delivery_time": "2 gün"
+      }
+    ],
+    "payment_term": "Peşin",
+    "delivery_time": "Stokta (hemen teslim)",
+    "offer_option": "7 Gün",
+    "prices": [
+      13.0
+    ],
+    "kdv_dahil": [
+      15.6
+    ],
+    "ara_toplamlar": [
+      15.6
+    ],
+    "toplam": 15.6,
+    "offer_note": "DÜŞTÜ",
+    "assigned_admin": "Mehmet"
+  }
 ]

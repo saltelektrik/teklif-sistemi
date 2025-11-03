@@ -1,107 +1,111 @@
-{% extends "admin/base_admin.html" %}
+{% extends 'admin/base_admin.html' %}
 {% block title %}Yönetici Paneli{% endblock %}
 
 {% block content %}
 <h1 class="text-2xl font-bold text-gray-800 mb-6">Yönetici Paneli</h1>
 
-<div class="bg-white rounded-xl shadow-sm p-6">
-  {% if requests %}
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm text-left text-gray-700 border border-gray-100 rounded-lg">
-      <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
-        <tr>
-          <th class="px-4 py-3">ID</th>
-          <th class="px-4 py-3">Ad Soyad</th>
-          <th class="px-4 py-3">Mesaj</th>
-          <th class="px-4 py-3">Tarih</th>
-          <th class="px-4 py-3">Durum</th>
-          <th class="px-4 py-3">İlgilenen Yönetici</th>
-          <th class="px-4 py-3 text-right">İşlem</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for req in requests %}
-        <tr class="border-t hover:bg-gray-50">
-          <td class="px-4 py-3 font-medium text-gray-800">{{ req.id }}</td>
-          <td class="px-4 py-3">{{ req.name }}</td>
-          <td class="px-4 py-3 text-gray-600">
-            {{ (req.messages[0].text[:40] + '...') if req.messages is defined and req.messages|length > 0 else '—' }}
-          </td>
-          <td class="px-4 py-3 text-gray-500">{{ req.timestamp }}</td>
+<div class="bg-white shadow rounded-xl p-6">
+  <table class="min-w-full text-sm text-gray-800 border border-gray-200 rounded-lg">
+    <thead class="bg-gray-100 text-gray-600 uppercase text-xs">
+      <tr>
+        <th class="px-4 py-2 text-left">ID</th>
+        <th class="px-4 py-2 text-left">Ad Soyad</th>
+        <th class="px-4 py-2 text-left">Mesaj</th>
+        <th class="px-4 py-2 text-left">Tarih</th>
+        <th class="px-4 py-2 text-left">Durum</th>
+        <th class="px-4 py-2 text-left">İlgilenen Yönetici</th>
+        <th class="px-4 py-2 text-left">İlgilenen Yönetici</th>
+      </tr>
+    </thead>
 
-          <!-- 🔄 Durum Renkleri -->
-          <td class="px-4 py-3">
-            {% if req.status == 'Yeni' %}
-              <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-medium px-2.5 py-1 rounded-full">🔴 Yeni</span>
-            {% elif req.status == 'Cevaplandı' %}
-              <span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 text-xs font-medium px-2.5 py-1 rounded-full">🟠 Cevaplandı</span>
-            {% elif req.status == 'Teklif Hazır' %}
-              <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full">🟢 Teklif Hazır</span>
-            {% elif req.status == 'Kapalı' %}
-              <span class="inline-flex items-center gap-1 bg-gray-200 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">⚫ Kapalı</span>
-            {% else %}
-              <span class="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">❔ Bilinmiyor</span>
-            {% endif %}
-          </td>
+    <tbody>
+      {% for req in requests %}
+      <tr class="border-t hover:bg-gray-50">
+        <!-- ID -->
+        <td class="px-4 py-3 font-semibold text-blue-600">{{ req.id }}</td>
 
-          <!-- ✅ Admin seçimi -->
-          <td class="px-4 py-3">
-            <select
-              class="border rounded-lg text-sm px-2 py-1 focus:ring-blue-500 focus:border-blue-500"
-              onchange="assignAdmin({{ req.id }}, this.value)">
-              <option value="">— Seç —</option>
-              {% for admin in users if admin.role == 'admin' %}
-                <option value="{{ admin.name }}"
-                  {% if req.assigned_admin == admin.name %}selected{% endif %}>
-                  {{ admin.name }}
-                </option>
-              {% endfor %}
-            </select>
-          </td>
+        <!-- Ad Soyad -->
+        <td class="px-4 py-3">{{ req.name or '-' }}</td>
 
-          <td class="px-4 py-3 text-right">
-            <a href="/admin/request/{{ req.id }}" class="text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-xs px-3 py-2 transition">
-              Aç
-            </a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <p class="text-gray-600">Henüz bir talep bulunmamaktadır.</p>
-  {% endif %}
-</div>
+        <!-- Mesaj -->
+        <td class="px-4 py-3">
+          {% if req.request_messages and req.request_messages|length > 0 %}
+          {% set msg = req.request_messages[-1] %}
+          <span class="inline-flex items-center gap-1">
+            📨 E-posta konusu: {{ msg.subject or '---' }}
+          </span>
+          {% else %}
+          <span class="text-gray-400">-</span>
+          {% endif %}
+        </td>
 
-<!-- ✅ AJAX -->
-<script>
+        <!-- Tarih -->
+        <td class="px-4 py-3">{{ req.timestamp or '-' }}</td>
+
+        <!-- Durum -->
+        <td class="px-4 py-3 text-center">
+          {% if req.status == 'Yeni' %}
+            <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-medium px-2.5 py-1 rounded-full">🔴 Yeni</span>
+          {% elif req.status == 'Teklif Hazır' %}
+            <span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 text-xs font-medium px-2.5 py-1 rounded-full">🟠 Teklif Hazır</span>
+          {% elif req.status == 'Cevaplandı' %}
+            <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full">🟢 Cevaplandı</span>
+          {% elif req.status == 'Revize Edildi' %}
+            <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full">🟢 Cevaplandı</span>
+          {% elif req.status == 'Kapalı' %}
+            <span class="inline-flex items-center gap-1 bg-gray-200 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">⚫ Kapalı</span>
+          {% else %}
+            <span class="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">❔ Belirsiz</span>
+          {% endif %}
+        </td>
+
+        <!-- 🧑‍💼 İLGİLENEN YÖNETİCİ -->
+<td class="px-4 py-3 text-center">
+  <select
+    class="border rounded-lg text-sm px-2 py-1 focus:ring-blue-500 focus:border-blue-500"
+    onchange="assignAdmin('{{ req.id }}', this.value)">
+    <option value="">— Seç —</option>
+    {% for admin in users if admin.role == 'admin' %}
+      <option value="{{ admin.name }}" {% if req.assigned_admin == admin.name %}selected{% endif %}>
+        {{ admin.name }}
+      </option>
+    {% endfor %}
+  </select>
+</td>
+
+
+
+        <!-- İşlem -->
+        <td class="px-4 py-3 text-center">
+          <a href="{{ url_for('admin_request_detail', req_id=req.id) }}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium">Aç</a>
+        </td>
+      </tr>
+      {% endfor %}
+      <script>
   function assignAdmin(reqId, adminName) {
     fetch(`/admin/assign/${reqId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `admin_name=${encodeURIComponent(adminName)}`
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ admin: adminName })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        console.log(`✅ Yönetici (${adminName}) başarıyla atandı (ID: ${reqId})`);
+      } else {
+        alert("⚠️ Yönetici atanamadı!");
+      }
+    })
+    .catch(err => {
+      console.error("❌ Hata:", err);
+      alert("Sunucu hatası oluştu!");
     });
   }
 </script>
-<script>
-function assignAdmin(reqId, adminName) {
-  if (!adminName) return;
 
-  fetch(`/admin/assign/${reqId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ admin: adminName })
-  })
-  .then(res => {
-    if (res.ok) {
-      console.log("✅ Yönetici atandı:", adminName);
-    } else {
-      console.error("❌ Yönetici atama başarısız.");
-    }
-  })
-  .catch(err => console.error("Fetch hatası:", err));
-}
-</script>
-
+    </tbody>
+  </table>
+</div>
 {% endblock %}
