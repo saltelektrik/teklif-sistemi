@@ -116,7 +116,7 @@ async function searchStock(inputEl) {
     showLoading(resultDiv, inputEl);
 
     try {
-      const res = await fetch("/search_stock", {
+      const res = await fetch(window.location.origin + "/search_stock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query })
