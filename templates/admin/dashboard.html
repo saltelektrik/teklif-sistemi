@@ -2,7 +2,24 @@
 {% block title %}Yönetici Paneli{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold text-gray-800 mb-6">Yönetici Paneli</h1>
+<form method="get" class="flex gap-2 mb-3">
+  <select name="status" class="border rounded px-2 py-1">
+    <option value="all">Tümü</option>
+    <option value="Yeni">Yeni</option>
+    <option value="Teklif Hazır">Teklif Hazır</option>
+    <option value="Cevaplandı">Cevaplandı</option>
+    <option value="Kapalı">Kapalı</option>
+  </select>
+
+  <select name="sort" class="border rounded px-2 py-1">
+    <option value="default">Varsayılan</option>
+    <option value="newest">En Yeni</option>
+  </select>
+
+  <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded">Filtrele</button>
+</form>
+
+</div>
 
 <div class="bg-white shadow rounded-xl p-6">
   <table class="min-w-full text-sm text-gray-800 border border-gray-200 rounded-lg">
@@ -12,9 +29,10 @@
         <th class="px-4 py-2 text-left">Ad Soyad</th>
         <th class="px-4 py-2 text-left">Mesaj</th>
         <th class="px-4 py-2 text-left">Tarih</th>
+        <th class="px-3 py-2">Cevaplanma Süresi</th>
         <th class="px-4 py-2 text-left">Durum</th>
         <th class="px-4 py-2 text-left">İlgilenen Yönetici</th>
-        <th class="px-4 py-2 text-left">İlgilenen Yönetici</th>
+        <th class="px-4 py-2 text-left">Teklife Git</th>
       </tr>
     </thead>
 
@@ -40,7 +58,16 @@
         </td>
 
         <!-- Tarih -->
-        <td class="px-4 py-3">{{ req.timestamp or '-' }}</td>
+<td class="px-4 py-3">{{ req.timestamp or '-' }}</td>
+
+<!-- Cevaplanma Süresi -->
+<td class="px-3 py-2">
+  {% if req.response_minutes is not none %}
+    {{ req.response_minutes }} dk
+  {% else %}
+    -
+  {% endif %}
+</td>
 
         <!-- Durum -->
         <td class="px-4 py-3 text-center">
@@ -72,8 +99,6 @@
     {% endfor %}
   </select>
 </td>
-
-
 
         <!-- İşlem -->
         <td class="px-4 py-3 text-center">

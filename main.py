@@ -1,11 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from datetime import datetime
 from functools import wraps
-import os, json
+import os, json, smtplib, ssl
+from email.message import EmailMessage
+from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 
+# .env dosyasını yükle
+load_dotenv()
+
 app = Flask(__name__)
-app.secret_key = "super-secret-key-12345"
+app.secret_key = os.getenv("FLASK_SECRET", "default-key")
 
 # 📁 Upload klasörü
 UPLOAD_FOLDER = os.path.join("static", "uploads")
@@ -286,20 +291,25 @@ def status(req_id):
 def admin_dashboard():
     global requests_data, users
     import json
+    from datetime import datetime
 
-    # 🔹 En güncel talepleri JSON dosyasından yeniden yükle
+    # 🔹 Filtre & Sıralama Parametreleri
+    sort = request.args.get("sort", "default")          # default, newest
+    status_filter = request.args.get("status", "all")   # all, Teklif Hazır, Yeni, vb.
+
+    # 🔹 Talepleri JSON dosyasından yükle
     try:
         with open("data/requests.json", "r", encoding="utf-8") as f:
             requests_data = json.load(f)
-                # 🧩 Eski statüleri normalize et
+
+        # 🧩 Eski statüleri normalize et
         for r in requests_data:
             if r.get("status") == "Revize Edildi":
                 r["status"] = "Cevaplandı"
             elif r.get("status") == "new":
                 r["status"] = "Yeni"
 
-
-        # Eski veri formatlarını yeni anahtarlara dönüştür (mail + portal uyumu)
+        # 🪄 Eski veri formatlarını dönüştür (uyumluluk için)
         for r in requests_data:
             if "messages" in r and "request_messages" not in r:
                 r["request_messages"] = r["messages"]
@@ -312,8 +322,7 @@ def admin_dashboard():
 
     user = get_current_user()
 
-    # 🟢 Statü sıralama mantığı (status sayfasıyla uyumlu)
-    # Önce "Yeni", sonra "Teklif Hazır", sonra "Cevaplandı", en altta "Kapalı"
+    # 🟢 Statü sıralama mantığı
     status_order = {
         "Yeni": 0,
         "new": 0,
@@ -323,106 +332,121 @@ def admin_dashboard():
         "Kapalı": 4
     }
 
-    # 🔄 Talepleri önce duruma, sonra tarihe göre sırala (yeni olanlar üstte)
-    requests_data = sorted(
-        requests_data,
-        key=lambda r: (
-            status_order.get(r.get("status"), 99),
-            r.get("timestamp", "")
-        ),
-        reverse=False  # “Yeni” olanlar en üstte
-    )
+    # 🔄 Filtreleme
+    if status_filter and status_filter != "all":
+        requests_data = [r for r in requests_data if r.get("status") == status_filter]
 
-    # 📊 En güncel tarihli kayıtları da üstte göstermek istiyorsan:
-    # requests_data = sorted(requests_data, key=lambda r: r.get("timestamp", ""), reverse=True)
+    # 🔄 Sıralama Fonksiyonu
+    def parse_date_safe(ts):
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%d.%m.%Y %H:%M"):
+            try:
+                return datetime.strptime(ts, fmt)
+            except Exception:
+                continue
+        return datetime.min
 
+    # 🔄 Sıralama Uygulama
+    if sort == "newest":
+        requests_data = sorted(
+            requests_data,
+            key=lambda r: parse_date_safe(r.get("timestamp", "")),
+            reverse=True
+        )
+    else:
+        requests_data = sorted(
+            requests_data,
+            key=lambda r: (
+                status_order.get(r.get("status"), 99),
+                r.get("timestamp", "")
+            ),
+            reverse=False
+        )
+
+    # 📅 Cevaplanma Süresi Hesaplama
+    def _parse(ts):
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%d.%m.%Y %H:%M"):
+            try:
+                return datetime.strptime(ts, fmt)
+            except Exception:
+                pass
+        return None
+
+    for r in requests_data:
+        r["response_minutes"] = None
+        ts = r.get("timestamp")
+        ot = r.get("offer_created_at")
+        if ts and ot:
+            t1 = _parse(ts)
+            t2 = _parse(ot)
+            if t1 and t2:
+                diff_min = int(max(0, (t2 - t1).total_seconds() // 60))
+                r["response_minutes"] = diff_min
+
+    # 🔚 Render Dashboard
     return render_template("admin/dashboard.html", requests=requests_data, user=user, users=users)
 
-from flask import jsonify, request
-
 @app.route("/admin/assign/<int:req_id>", methods=["POST"])
+@admin_required
 def admin_assign(req_id):
     data = request.get_json()
     selected_admin = data.get("admin")
 
     try:
-        with open("data/requests.json", "r+", encoding="utf-8") as f:
-            requests_data = json.load(f)
-            for req in requests_data:
-                if req["id"] == req_id:
-                    req["assigned_admin"] = selected_admin
-                    break
-            f.seek(0)
-            json.dump(requests_data, f, ensure_ascii=False, indent=4)
-            f.truncate()
+        # JSON'u güvenli oku → güncelle → atomik yaz
+        with open("data/requests.json", "r", encoding="utf-8") as f:
+            current = json.load(f)
 
-        print(f"👤 Talep {req_id} için yönetici atandı: {selected_admin}")
+        for req in current:
+            if req["id"] == req_id:
+                req["assigned_admin"] = selected_admin
+                break
+
+        tmp = "data/requests.tmp.json"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(current, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, "data/requests.json")
+
         return jsonify({"success": True}), 200
-
     except Exception as e:
-        print("⚠️ Yönetici atama hatası:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/admin/request/<int:req_id>", methods=["GET", "POST"])
 @admin_required
 def admin_request_detail(req_id):
-    global requests_data
-    import json
-
-    # Veriyi oku
-    try:
-        with open("data/requests.json", "r", encoding="utf-8") as f:
-            requests_data = json.load(f)
-    except Exception as e:
-        print("⚠️ Veri yükleme hatası:", e)
-        requests_data = []
-
-    user = get_current_user()
-    req = next((r for r in requests_data if r["id"] == req_id), None)
-    if not req:
-        flash("Talep bulunamadı.")
-        return redirect(url_for("admin_dashboard"))
-
-    # 🔹 Teklif Kaydetme
     if request.method == "POST":
         for r in requests_data:
             if r["id"] == req_id:
-             r["payment_term"] = request.form.get("payment_term", r.get("payment_term", "Peşin"))
-             r["offer_option"] = request.form.get("offer_option", r.get("offer_option", "7 Gün"))
+                r["payment_term"] = request.form.get("payment_term", r.get("payment_term", "Peşin"))
+                r["offer_option"] = request.form.get("offer_option", r.get("offer_option", "7 Gün"))
 
-            # 🟢 Her ürün için teslim süresi kaydı
-            delivery_times = request.form.getlist("delivery_time[]")
-            for i, p in enumerate(r.get("products", [])):
-                if i < len(delivery_times):
-                    p["delivery_time"] = delivery_times[i]
+                # Ürün teslim süreleri
+                delivery_times = request.form.getlist("delivery_time[]")
+                for i, p in enumerate(r.get("products", [])):
+                    if i < len(delivery_times):
+                        p["delivery_time"] = delivery_times[i]
 
-            # 🧩 Statü Güncelleme
-            if r.get("status") in [None, "", "Yeni", "new"]:
-                r["status"] = "Teklif Hazır"
-            elif r.get("status") not in ["Kapalı"]:
-                r["status"] = "Cevaplandı"
-            break
-
-                # 🟢 Statü Güncelleme Mantığı
-            if r.get("status") in [None, "", "Yeni", "new"]:
+                # Statü güncelleme (TEK yerde)
+                if r.get("status") in [None, "", "Yeni", "new"]:
                     r["status"] = "Teklif Hazır"
-            elif r.get("status") not in ["Kapalı"]:
+                elif r.get("status") != "Kapalı":
                     r["status"] = "Cevaplandı"
-                    break
+                break
 
-        # JSON Kaydet
         try:
             with open("data/requests.json", "w", encoding="utf-8") as f:
                 json.dump(requests_data, f, ensure_ascii=False, indent=2)
-            print("💾 Teklif kaydedildi, durum:", r["status"])
             flash("Teklif kaydedildi ve durum güncellendi.")
         except Exception as e:
-            print("❌ JSON kaydetme hatası:", e)
             flash("Kaydetme hatası!", "error")
 
+        # 🔹 Bu satır fonksiyonun içinde, POST bloğunun sonunda olmalı:
         return redirect(url_for("admin_request_detail", req_id=req_id))
 
-    return render_template("admin/request_detail.html", req=req, user=user)
+    # GET isteği burada:
+    for r in requests_data:
+        if r["id"] == req_id:
+            return render_template("admin/request_detail.html", req=r)
+
 
 @app.route("/offer_chat/<int:req_id>", methods=["GET", "POST"])
 @login_required
@@ -635,6 +659,8 @@ def admin_save_offer(req_id):
     # 🔄 Durum güncelleme
     if req.get("status") in [None, "", "Yeni", "new"]:
         req["status"] = "Teklif Hazır"
+    if not req.get("offer_created_at"):
+        req["offer_created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     elif req.get("status") != "Kapalı":
         req["status"] = "Cevaplandı"
 
@@ -666,152 +692,203 @@ def admin_offer_pdf_only(req_id):
     from datetime import datetime
     import os
 
-    # İlgili kayıt bulunmazsa yönlendirme
+    # --------- DATA ----------
     req = next((r for r in requests_data if r["id"] == req_id), None)
     if not req:
         flash("Teklif bulunamadı.")
         return redirect(url_for("admin_dashboard"))
 
-    # Seçili alanlar (varsayılanlarla birlikte)
     KDV_ORANI = 0.20
     payment_term = req.get("payment_term", "Peşin")
-    delivery_time = req.get("delivery_time", "Stok durumuna göre/depo çıkış")
-    offer_option = req.get("offer_option", "Tek opsiyon")
+    delivery_time_global = req.get("delivery_time", "Stok durumuna göre/depo çıkış")
+    offer_option = req.get("offer_option", "7 Gün")
 
-    COMPANY_INFO = {
+    COMPANY = {
         "name": "ŞALT ELEKTRİK",
-        "tagline": "Elektrik Malzemeleri ve Çözüm Ortağınız",
-        "addr": "Adres: İkitelli OSB, No: 10/3, İstanbul",
-        "phone": "Telefon: (000) 000 00 00",
+        "tag": "Elektrik Malzemeleri ve Çözüm Ortağınız",
+        "addr": "Adana OSB Çanakkale Cad, No: 3, Adana",
+        "phone": "(554) 547 72 20",
         "email": "info@saltelektrik.com",
-        "website": "www.saltelektrik.com",
+        "web": "www.saltelektrik.com",
         "logo": os.path.join("static", "uploads", "HD LOGO 4K.png"),
     }
 
+    # --------- FONTS / DOC ----------
     pdfmetrics.registerFont(TTFont("DejaVuSans", "DejaVuSans.ttf"))
     pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", "DejaVuSans-Bold.ttf"))
-
+    os.makedirs(os.path.join("static", "uploads"), exist_ok=True)
     pdf_path = os.path.join("static", "uploads", f"teklif_{req_id}.pdf")
+
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=A4,
-        leftMargin=1.6 * cm,
-        rightMargin=1.6 * cm,
-        topMargin=2.2 * cm,
-        bottomMargin=2.0 * cm,
+        leftMargin=1.5*cm, rightMargin=1.5*cm,
+        topMargin=2.0*cm, bottomMargin=2.0*cm,
     )
 
     styles = getSampleStyleSheet()
     styles["Normal"].fontName = "DejaVuSans"
     styles["Title"].fontName = "DejaVuSans-Bold"
 
-    h1 = ParagraphStyle("h1", parent=styles["Title"], fontSize=16, spaceAfter=6)
+    h1 = ParagraphStyle("h1", parent=styles["Title"], fontSize=16, alignment=1, spaceAfter=8)
     cell = ParagraphStyle("cell", parent=styles["Normal"], fontSize=9, leading=12)
+    cell_left = ParagraphStyle("cell_left", parent=cell, alignment=0)
     cell_bold = ParagraphStyle("cell_bold", parent=styles["Normal"], fontSize=9, leading=12, fontName="DejaVuSans-Bold")
+    amt_right = ParagraphStyle("amt_right", parent=styles["Normal"], fontSize=9, alignment=2)
 
-    def fmt_money(val):
+    def fmt_money(v):
         try:
-            return f"{float(val):.2f} ₺"
+            return f"{float(v):.2f} ₺"
         except Exception:
             return "-"
 
     def draw_header_footer(canvas, doc_):
         canvas.saveState()
         canvas.setStrokeColor(colors.lightgrey)
-        canvas.line(1.6 * cm, A4[1] - 1.5 * cm, A4[0] - 1.6 * cm, A4[1] - 1.5 * cm)
-        canvas.line(1.6 * cm, 1.8 * cm, A4[0] - 1.6 * cm, 1.8 * cm)
-        footer_text = f"{COMPANY_INFO['addr']}  •  {COMPANY_INFO['phone']}  •  {COMPANY_INFO['email']}  •  {COMPANY_INFO['website']}"
+        canvas.line(1.5*cm, A4[1]-1.4*cm, A4[0]-1.5*cm, A4[1]-1.4*cm)
+        canvas.line(1.5*cm, 1.9*cm, A4[0]-1.5*cm, 1.9*cm)
         canvas.setFont("DejaVuSans", 8)
         canvas.setFillColor(colors.grey)
-        canvas.drawRightString(A4[0] - 1.6 * cm, 1.45 * cm, footer_text)
-        page_str = f"Sayfa {doc_.page}"
-        canvas.drawString(1.6 * cm, 1.45 * cm, page_str)
+        footer = f"{COMPANY['addr']}  •  {COMPANY['phone']}  •  {COMPANY['email']}  •  {COMPANY['web']}"
+        canvas.drawRightString(A4[0]-1.5*cm, 1.55*cm, footer)
+        canvas.drawString(1.5*cm, 1.55*cm, f"Sayfa {doc_.page}")
         canvas.restoreState()
 
     elements = []
 
-    # Başlık
-    if os.path.exists(COMPANY_INFO["logo"]):
-        logo = Image(COMPANY_INFO["logo"], width=3 * cm, height=3 * cm)
+    # --------- HEADER ----------
+    if os.path.exists(COMPANY["logo"]):
+        left = Image(COMPANY["logo"], width=3.0*cm, height=3.0*cm)
     else:
-        logo = Paragraph(COMPANY_INFO["name"], h1)
-    header_tbl = Table(
-        [[logo, Paragraph(f"<b>{COMPANY_INFO['name']}</b><br/>{COMPANY_INFO['tagline']}", styles["Normal"])]],
-        colWidths=[3.2 * cm, 12.8 * cm],
-        hAlign="LEFT",
-    )
-    header_tbl.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
-    elements += [header_tbl, Spacer(1, 0.2 * cm), Paragraph("<b>TEKLİF FORMU</b>", h1)]
+        left = Paragraph(COMPANY["name"], styles["Title"])
+    right = Paragraph(f"<b>{COMPANY['name']}</b><br/><font size=9>{COMPANY['tag']}</font>", styles["Normal"])
+    header = Table([[left, right]], colWidths=[3.2*cm, 12.8*cm])
+    header.setStyle(TableStyle([("VALIGN", (0,0), (-1,-1), "MIDDLE")]))
+    elements += [header, Spacer(1, 0.25*cm), Paragraph("TEKLİF FORMU", h1)]
 
-    # Müşteri Bilgileri
+    # --------- META ----------
     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
-    customer = [
-        [Paragraph("<b>Müşteri:</b>", cell_bold), Paragraph(req.get("name", "-"), cell)],
-        [Paragraph("<b>E-posta:</b>", cell_bold), Paragraph(req.get("email", "-"), cell)],
-        [Paragraph("<b>Talep Tarihi:</b>", cell_bold), Paragraph(req.get("timestamp", "-"), cell)],
+    left_info = [
+        [Paragraph("<b>Müşteri:</b>", cell_bold), Paragraph(req.get("name", "-"), cell_left)],
+        [Paragraph("<b>E-posta:</b>", cell_bold), Paragraph(req.get("email", "-"), cell_left)],
+        [Paragraph("<b>Talep Tarihi:</b>", cell_bold), Paragraph(req.get("timestamp", "-"), cell_left)],
     ]
-    offer_meta = [
-        [Paragraph("<b>Teklif No:</b>", cell_bold), Paragraph(f"#{req_id}", cell)],
-        [Paragraph("<b>Tarih:</b>", cell_bold), Paragraph(now_str, cell)],
+    right_info = [
+        [Paragraph("<b>Teklif No:</b>", cell_bold), Paragraph(f"#{req_id}", cell_left)],
+        [Paragraph("<b>Tarih:</b>", cell_bold), Paragraph(now_str, cell_left)],
     ]
-    top_tbl = Table(
-        [[Table(customer, colWidths=[3 * cm, 7 * cm]), Table(offer_meta, colWidths=[3 * cm, 7 * cm])]],
-        colWidths=[10 * cm, 10 * cm],
-    )
-    top_tbl.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.25, colors.lightgrey)]))
-    elements += [top_tbl, Spacer(1, 0.4 * cm)]
+    meta = Table([[Table(left_info, colWidths=[3.2*cm, 7.2*cm]),
+                   Table(right_info, colWidths=[3.2*cm, 7.2*cm])]],
+                 colWidths=[10.4*cm, 10.4*cm])
+    meta.setStyle(TableStyle([
+        ("BOX", (0,0), (-1,-1), 0.6, colors.HexColor("#e5e5e5")),
+        ("INNERGRID", (0,0), (-1,-1), 0.4, colors.HexColor("#e5e5e5")),
+        ("BACKGROUND", (0,0), (-1,-1), colors.whitesmoke),
+    ]))
+    elements += [meta, Spacer(1, 0.35*cm)]
 
-    # Ürün Tablosu
-    data = [["Sıra", "Ürün Açıklaması", "Kod", "Marka", "Adet", "Birim Fiyat", "KDV Dahil", "Tutar"]]
-    for i, prod in enumerate(req.get("products", [])):
-        prices = req.get("prices", [])
-        kdv_list = req.get("kdv_dahil", [])
-        ara_toplam = req.get("ara_toplamlar", [])
+    # --------- PRODUCTS ----------
+    headers = ["Sıra", "Ürün Açıklaması", "Kod", "Marka", "Adet", "Teslim Süresi", "Birim Fiyat", "KDV Dahil", "Tutar"]
+    data = [headers]
+
+    products = req.get("products", [])
+    prices = req.get("prices", [])
+    kdv_list = req.get("kdv_dahil", [])
+    ara_toplam = req.get("ara_toplamlar", [])
+
+    subtotal = 0.0
+
+    for i, prod in enumerate(products):
+        qty = float(str(prod.get("qty", "0")).replace(",", ".") or 0)
+        unit = float(prices[i]) if i < len(prices) else 0.0
+        total_excl = qty * unit
+        subtotal += total_excl
+
         data.append([
             str(i + 1),
-            Paragraph(prod.get("desc", ""), cell),
-            Paragraph(prod.get("code", ""), cell),
-            Paragraph(prod.get("brand", ""), cell),
-            str(prod.get("qty", "")),
-            fmt_money(prices[i]) if i < len(prices) else "-",
-            fmt_money(kdv_list[i]) if i < len(kdv_list) else "-",
-            fmt_money(ara_toplam[i]) if i < len(ara_toplam) else "-",
+            Paragraph(prod.get("desc", ""), ParagraphStyle("desc", alignment=0, fontName="DejaVuSans", fontSize=9)),
+            Paragraph(prod.get("code", ""), ParagraphStyle("code", alignment=1, fontName="DejaVuSans", fontSize=9)),
+            Paragraph(prod.get("brand", ""), ParagraphStyle("brand", alignment=1, fontName="DejaVuSans", fontSize=9)),
+            Paragraph(str(prod.get("qty", "")), ParagraphStyle("qty", alignment=1, fontName="DejaVuSans", fontSize=9)),
+            Paragraph(prod.get("delivery_time", delivery_time_global), ParagraphStyle("delivery", alignment=1, fontName="DejaVuSans", fontSize=9)),
+            Paragraph(fmt_money(unit), ParagraphStyle("money", alignment=1, fontName="DejaVuSans", fontSize=9)),
+            Paragraph(fmt_money(unit * (1 + KDV_ORANI)), ParagraphStyle("money", alignment=1, fontName="DejaVuSans", fontSize=9)),
+            Paragraph(fmt_money(total_excl * (1 + KDV_ORANI)), ParagraphStyle("money", alignment=1, fontName="DejaVuSans", fontSize=9)),
         ])
 
-    tbl = Table(data, colWidths=[1 * cm, 6 * cm, 2 * cm, 2.6 * cm, 1.6 * cm, 2.4 * cm, 2.4 * cm, 2.8 * cm])
-    tbl.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (-1, -1), "DejaVuSans"),
-        ("ALIGN", (1, 1), (1, -1), "LEFT"),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-        ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
-    ]))
-    elements += [tbl, Spacer(1, 0.5 * cm)]
-
-    # Notlar
-    offer_note = (req.get("offer_note") or "").strip()
-    if offer_note:
-        elements += [Paragraph("<b>Teklif Notu</b>", styles["Title"]), Paragraph(offer_note.replace("\n", "<br/>"), styles["Normal"])]
-
-    terms = (
-    f"<b>Açıklamalar / Şartlar:</b><br/>"
-    f"• Ödeme: {payment_term}<br/>"
-    f"• Teklif Geçerlilik Süresi: {offer_option}<br/>"
-    f"• Teslim: {delivery_time}<br/>"
-    f"• Fiyatlara kargo/kurulum dahil değildir.<br/>"
-)
-
-    elements += [Spacer(1, 0.3 * cm), Paragraph(terms, styles["Normal"]), Spacer(1, 0.5 * cm)]
-
-    # İmza
-    sign_tbl = Table(
-        [[Paragraph("<b>Hazırlayan</b><br/><br/>İsim/İmza", styles["Normal"]), Paragraph("<b>Onaylayan</b><br/><br/>İsim/İmza", styles["Normal"])]],
-        colWidths=[9.8 * cm, 9.8 * cm],
+    table = Table(
+        data,
+        colWidths=[0.9*cm, 4.5*cm, 2.0*cm, 2.2*cm, 1.4*cm, 2.8*cm, 2.4*cm, 2.2*cm, 2.4*cm],
+        hAlign="CENTER"
     )
-    sign_tbl.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.5, colors.lightgrey)]))
-    elements.append(sign_tbl)
+    table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), "DejaVuSans"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("ALIGN", (1, 1), (1, -1), "LEFT"),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
+        ("FONTNAME", (0, 0), (-1, 0), "DejaVuSans-Bold"),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+        ("TOPPADDING", (0, 1), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 5),
+    ]))
+    elements += [table, Spacer(1, 0.4 * cm)]
 
-    # PDF oluştur
+    # --------- TOTALS ----------
+    kdv_tutar = subtotal * KDV_ORANI
+    genel_toplam = subtotal + kdv_tutar
+
+    totals = Table([
+        [Paragraph("Ara Toplam (KDV Hariç):", cell_bold), Paragraph(fmt_money(subtotal), amt_right)],
+        [Paragraph(f"KDV (%{int(KDV_ORANI*100)}):", cell_bold), Paragraph(fmt_money(kdv_tutar), amt_right)],
+        [Paragraph("Genel Toplam:", cell_bold), Paragraph(fmt_money(genel_toplam), amt_right)],
+    ], colWidths=[8.0*cm, 4.0*cm], hAlign="RIGHT")
+    totals.setStyle(TableStyle([
+        ("ALIGN", (0,0), (-1,-1), "RIGHT"),
+        ("LINEABOVE", (0,2), (-1,2), 0.8, colors.black),
+        ("FONTNAME", (0,2), (-1,2), "DejaVuSans-Bold"),
+        ("TOPPADDING", (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+    ]))
+    elements += [totals, Spacer(1, 0.45*cm)]
+
+    # --------- TERMS ----------
+    terms = (
+        "<b>Açıklamalar / Şartlar:</b><br/>"
+        f"• Ödeme: {payment_term}<br/>"
+        f"• Teklif Geçerlilik Süresi: {offer_option}<br/>"
+        f"• Teslim: {delivery_time_global}<br/>"
+        "• Fiyatlara kargo/kurulum dahil değildir.<br/>"
+    )
+    elements += [Paragraph(terms, styles["Normal"]), Spacer(1, 0.5*cm)]
+
+    # --------- SIGN ----------
+    sign = Table(
+        [[Paragraph("<b>Hazırlayan</b><br/><br/>İsim/İmza", styles["Normal"]),
+          Paragraph("<b>Onaylayan</b><br/><br/>İsim/İmza", styles["Normal"])]],
+        colWidths=[9.8*cm, 9.8*cm],
+    )
+    sign.setStyle(TableStyle([
+        ("BOX", (0,0), (-1,-1), 0.5, colors.lightgrey),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("TOPPADDING", (0,0), (-1,-1), 12),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 18),
+        ("LEFTPADDING", (0,0), (-1,-1), 8),
+        ("RIGHTPADDING", (0,0), (-1,-1), 8),
+    ]))
+    elements.append(sign)
+
+    # İlk teklif zamanı (sadece bir kez yaz)
+    if not req.get("offer_created_at"):
+        req["offer_created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # dosyaya yaz
+    with open("data/requests.json", "w", encoding="utf-8") as f:
+        json.dump(requests_data, f, ensure_ascii=False, indent=2)
+
+    # --------- BUILD PDF ----------
     doc.build(elements, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
+
     flash("PDF başarıyla oluşturuldu.")
     return redirect(url_for("static", filename=f"uploads/teklif_{req_id}.pdf"))
 
@@ -820,308 +897,239 @@ def admin_offer_pdf_only(req_id):
 def admin_offer_pdf(req_id):
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
-    from reportlab.platypus import (
-        SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
-    )
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.lib.enums import TA_CENTER
     from datetime import datetime
-    import ssl, smtplib, os
     from email.message import EmailMessage
+    import smtplib, os
 
-    TA_LEFT = 0
-    TA_RIGHT = 2
-
+    # --------- DATA ----------
     req = next((r for r in requests_data if r["id"] == req_id), None)
     if not req:
         flash("Teklif bulunamadı.")
         return redirect(url_for("admin_dashboard"))
 
-    KDV_ORANI   = 0.20
+    KDV_ORANI = 0.20
     payment_term = req.get("payment_term", "Peşin")
-    delivery_time = req.get("delivery_time", "Stok durumuna göre/depo çıkış")
-    offer_option = req.get("offer_option", "Tek opsiyon")
+    delivery_time_global = req.get("delivery_time", "Stok durumuna göre/depo çıkış")
+    offer_option = req.get("offer_option", "7 Gün")
 
-    COMPANY_NAME = "ŞALT ELEKTRİK"
-    COMPANY_TAGLINE = "Elektrik Malzemeleri ve Çözüm Ortağınız"
-    COMPANY_ADDR = "Adres: İkitelli OSB, No: 10/3, İstanbul"
-    COMPANY_PHONE = "Telefon: (000) 000 00 00"
-    COMPANY_EMAIL = "info@saltelektrik.com"
-    COMPANY_WEBSITE = "www.saltelektrik.com"
-    LOGO_PATH = os.path.join("static", "uploads", "HD LOGO 4K.png")
+    COMPANY = {
+        "name": "ŞALT ELEKTRİK",
+        "tag": "Elektrik Malzemeleri ve Çözüm Ortağınız",
+        "addr": "Adana OSB Çanakkale Cad, No: 3, Adana",
+        "phone": "(554) 547 72 20",
+        "email": "info@saltelektrik.com",
+        "web": "www.saltelektrik.com",
+        "logo": os.path.join("static", "uploads", "HD LOGO 4K.png"),
+    }
 
-    # --- Fontlar (Türkçe desteği) ---
-    pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
-    pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'DejaVuSans-Bold.ttf'))
-
-    # --- Veriyi bul ---
-    req = next((r for r in requests_data if r["id"] == req_id), None)
-    if not req:
-        flash("Teklif bulunamadı.")
-        return redirect(url_for("admin_dashboard"))
-
-    # -------------------- PDF Yol/Ayar --------------------
+    # --------- FONTS / DOC ----------
+    pdfmetrics.registerFont(TTFont("DejaVuSans", "DejaVuSans.ttf"))
+    pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", "DejaVuSans-Bold.ttf"))
+    os.makedirs(os.path.join("static", "uploads"), exist_ok=True)
     pdf_path = os.path.join("static", "uploads", f"teklif_{req_id}.pdf")
+
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=A4,
-        leftMargin=1.6 * cm,
-        rightMargin=1.6 * cm,
-        topMargin=2.2 * cm,
-        bottomMargin=2.0 * cm,
+        leftMargin=1.5*cm, rightMargin=1.5*cm,
+        topMargin=2.0*cm, bottomMargin=2.0*cm,
     )
 
-    # -------------------- Stil Tanımları --------------------
     styles = getSampleStyleSheet()
-    styles["Normal"].fontName = 'DejaVuSans'
-    styles["Title"].fontName = 'DejaVuSans-Bold'
+    styles["Normal"].fontName = "DejaVuSans"
+    styles["Title"].fontName = "DejaVuSans-Bold"
 
-    h1 = ParagraphStyle(
-        "h1", parent=styles["Title"], fontSize=16, alignment=TA_LEFT, spaceAfter=6
-    )
-    h2 = ParagraphStyle(
-        "h2", parent=styles["Title"], fontSize=12, alignment=TA_LEFT, spaceAfter=4
-    )
-    tiny = ParagraphStyle(
-        "tiny", parent=styles["Normal"], fontSize=8, textColor=colors.grey, alignment=TA_RIGHT
-    )
+    h1 = ParagraphStyle("h1", parent=styles["Title"], fontSize=16, alignment=1, spaceAfter=8)
     cell = ParagraphStyle("cell", parent=styles["Normal"], fontSize=9, leading=12)
-    cell_bold = ParagraphStyle("cell_bold", parent=styles["Normal"], fontSize=9, leading=12)
-    cell_bold.fontName = 'DejaVuSans-Bold'
+    cell_left = ParagraphStyle("cell_left", parent=cell, alignment=0)
+    cell_bold = ParagraphStyle("cell_bold", parent=styles["Normal"], fontSize=9, leading=12, fontName="DejaVuSans-Bold")
+    amt_right = ParagraphStyle("amt_right", parent=styles["Normal"], fontSize=9, alignment=2)
 
-    def fmt_money(val):
+    def fmt_money(v):
         try:
-            return f"{float(val):.2f} ₺"
+            return f"{float(v):.2f} ₺"
         except Exception:
             return "-"
 
-    # -------------------- Header/Footer (tüm sayfalar) --------------------
     def draw_header_footer(canvas, doc_):
         canvas.saveState()
-        # Header çizgisi
         canvas.setStrokeColor(colors.lightgrey)
-        canvas.line(1.6 * cm, A4[1] - 1.5 * cm, A4[0] - 1.6 * cm, A4[1] - 1.5 * cm)
-        # Footer çizgisi
-        canvas.line(1.6 * cm, 1.8 * cm, A4[0] - 1.6 * cm, 1.8 * cm)
-
-        # Footer metni
-        footer_text = f"{COMPANY_ADDR}  •  {COMPANY_PHONE}  •  {COMPANY_EMAIL}  •  {COMPANY_WEBSITE}"
+        canvas.line(1.5*cm, A4[1]-1.4*cm, A4[0]-1.5*cm, A4[1]-1.4*cm)
+        canvas.line(1.5*cm, 1.9*cm, A4[0]-1.5*cm, 1.9*cm)
         canvas.setFont("DejaVuSans", 8)
         canvas.setFillColor(colors.grey)
-        canvas.drawRightString(A4[0] - 1.6 * cm, 1.45 * cm, footer_text)
-
-        # Sayfa no
-        page_str = f"Sayfa {doc_.page}"
-        canvas.drawString(1.6 * cm, 1.45 * cm, page_str)
+        footer = f"{COMPANY['addr']}  •  {COMPANY['phone']}  •  {COMPANY['email']}  •  {COMPANY['web']}"
+        canvas.drawRightString(A4[0]-1.5*cm, 1.55*cm, footer)
+        canvas.drawString(1.5*cm, 1.55*cm, f"Sayfa {doc_.page}")
         canvas.restoreState()
 
     elements = []
 
-    # -------------------- Üst Bilgiler (Logo + Başlık) --------------------
-    header_row = []
-    if os.path.exists(LOGO_PATH):
-        header_row.append(Image(LOGO_PATH, width=3.0 * cm, height=3.0 * cm))
+    # --------- HEADER ----------
+    if os.path.exists(COMPANY["logo"]):
+        left = Image(COMPANY["logo"], width=3.0*cm, height=3.0*cm)
     else:
-        header_row.append(Paragraph(COMPANY_NAME, h1))
+        left = Paragraph(COMPANY["name"], styles["Title"])
+    right = Paragraph(f"<b>{COMPANY['name']}</b><br/><font size=9>{COMPANY['tag']}</font>", styles["Normal"])
+    header = Table([[left, right]], colWidths=[3.2*cm, 12.8*cm])
+    header.setStyle(TableStyle([("VALIGN", (0,0), (-1,-1), "MIDDLE")]))
+    elements += [header, Spacer(1, 0.25*cm), Paragraph("TEKLİF FORMU", h1)]
 
-    header_right = Paragraph(
-        f"<b>{COMPANY_NAME}</b><br/>{COMPANY_TAGLINE}",
-        styles["Normal"],
-    )
-    header_tbl = Table(
-        [[header_row[0], header_right]],
-        colWidths=[3.2 * cm, 12.8 * cm],
-        hAlign="LEFT",
-    )
-    header_tbl.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-    ]))
-    elements.append(header_tbl)
-    elements.append(Spacer(1, 0.2 * cm))
-    elements.append(Paragraph("<b>TEKLİF FORMU</b>", h1))
-
-    # -------------------- Müşteri & Teklif Üst Özeti --------------------
-    now_str = datetime.now().strftime('%d.%m.%Y %H:%M')
-    customer = [
-        [Paragraph("<b>Müşteri:</b>", cell_bold), Paragraph(req.get("name", "-"), cell)],
-        [Paragraph("<b>E-posta:</b>", cell_bold), Paragraph(req.get("email", "-"), cell)],
-        [Paragraph("<b>Talep Tarihi:</b>", cell_bold), Paragraph(req.get("timestamp", "-"), cell)],
+    # --------- META ----------
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    left_info = [
+        [Paragraph("<b>Müşteri:</b>", cell_bold), Paragraph(req.get("name", "-"), cell_left)],
+        [Paragraph("<b>E-posta:</b>", cell_bold), Paragraph(req.get("email", "-"), cell_left)],
+        [Paragraph("<b>Talep Tarihi:</b>", cell_bold), Paragraph(req.get("timestamp", "-"), cell_left)],
     ]
-    offer_meta = [
-        [Paragraph("<b>Teklif No:</b>", cell_bold), Paragraph(f"#{req_id}", cell)],
-        [Paragraph("<b>Tarih:</b>", cell_bold), Paragraph(now_str, cell)],
+    right_info = [
+        [Paragraph("<b>Teklif No:</b>", cell_bold), Paragraph(f"#{req_id}", cell_left)],
+        [Paragraph("<b>Tarih:</b>", cell_bold), Paragraph(now_str, cell_left)],
     ]
-    top_tbl = Table(
-        [
-            [Table(customer, colWidths=[3.0 * cm, 7.0 * cm]),
-             Table(offer_meta, colWidths=[3.0 * cm, 7.0 * cm])]
-        ],
-        colWidths=[10.0 * cm, 10.0 * cm],
-    )
-    top_tbl.setStyle(TableStyle([
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.lightgrey),
-        ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.lightgrey),
-        ("BACKGROUND", (0, 0), (-1, -1), colors.whitesmoke),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    meta = Table([[Table(left_info, colWidths=[3.2*cm, 7.2*cm]),
+                   Table(right_info, colWidths=[3.2*cm, 7.2*cm])]],
+                 colWidths=[10.4*cm, 10.4*cm])
+    meta.setStyle(TableStyle([
+        ("BOX", (0,0), (-1,-1), 0.6, colors.HexColor("#e5e5e5")),
+        ("INNERGRID", (0,0), (-1,-1), 0.4, colors.HexColor("#e5e5e5")),
+        ("BACKGROUND", (0,0), (-1,-1), colors.whitesmoke),
     ]))
-    elements.append(top_tbl)
-    elements.append(Spacer(1, 0.4 * cm))
+    elements += [meta, Spacer(1, 0.35*cm)]
 
-    # -------------------- Ürün Tablosu --------------------
-    data = [["Sıra", "Ürün Açıklaması", "Kod", "Marka", "Adet", "Birim Fiyat", "KDV Dahil", "Tutar"]]
+    # --------- PRODUCTS ----------
+    headers = ["Sıra", "Ürün Açıklaması", "Kod", "Marka", "Adet", "Teslim Süresi", "Birim Fiyat", "KDV Dahil", "Tutar"]
+    data = [headers]
+
     products = req.get("products", [])
     prices = req.get("prices", [])
     kdv_list = req.get("kdv_dahil", [])
     ara_toplam = req.get("ara_toplamlar", [])
 
+    subtotal = 0.0
+
     for i, prod in enumerate(products):
-        desc = Paragraph(prod.get("desc", ""), cell)
-        code = Paragraph(prod.get("code", ""), cell)
-        brand = Paragraph(prod.get("brand", ""), cell)
-        adet = str(prod.get("qty", ""))
-        data.append([
-            str(i + 1),
-            desc,
-            code,
-            brand,
-            adet,
-            fmt_money(prices[i]) if i < len(prices) else "-",
-            fmt_money(kdv_list[i]) if i < len(kdv_list) else "-",
-            fmt_money(ara_toplam[i]) if i < len(ara_toplam) else "-"
-        ])
+        qty = float(str(prod.get("qty", "0")).replace(",", ".") or 0)
+    unit = float(prices[i]) if i < len(prices) else 0.0
+    total_excl = qty * unit
+    subtotal += total_excl
 
+    data.append([
+        str(i + 1),
+        Paragraph(prod.get("desc", ""), ParagraphStyle("desc", alignment=0, fontName="DejaVuSans", fontSize=9)),
+        Paragraph(prod.get("code", ""), ParagraphStyle("code", alignment=1, fontName="DejaVuSans", fontSize=9)),
+        Paragraph(prod.get("brand", ""), ParagraphStyle("brand", alignment=1, fontName="DejaVuSans", fontSize=9)),
+        Paragraph(str(prod.get("qty", "")), ParagraphStyle("qty", alignment=1, fontName="DejaVuSans", fontSize=9)),
+        Paragraph(prod.get("delivery_time", delivery_time_global), ParagraphStyle("delivery", alignment=1, fontName="DejaVuSans", fontSize=9)),
+        Paragraph(fmt_money(unit), ParagraphStyle("money", alignment=1, fontName="DejaVuSans", fontSize=9)),
+        Paragraph(fmt_money(unit * (1 + KDV_ORANI)), ParagraphStyle("money", alignment=1, fontName="DejaVuSans", fontSize=9)),
+        Paragraph(fmt_money(total_excl * (1 + KDV_ORANI)), ParagraphStyle("money", alignment=1, fontName="DejaVuSans", fontSize=9)),
+    ])
+
+# --- TABLO AYARLARI ---
     table = Table(
-        data,
-        colWidths=[1.0 * cm, 6.0 * cm, 2.0 * cm, 2.6 * cm, 1.6 * cm, 2.4 * cm, 2.4 * cm, 2.8 * cm]
-    )
-    table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'DejaVuSans'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('ALIGN', (1, 1), (1, -1), 'LEFT'),
-        ('WORDWRAP', (0, 0), (-1, -1), True),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('FONTNAME', (0, 0), (-1, 0), 'DejaVuSans-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('TOPPADDING', (0, 1), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
-    ]))
-    elements.append(table)
-    elements.append(Spacer(1, 0.5 * cm))
-
-    # -------------------- Hesap Özetleri --------------------
-    # Varsa req.toplam'ı kullan; yoksa yeniden hesapla
-    try:
-        # KDV hariç ara toplamı güvenli hesapla
-        subtotal_excl = 0.0
-        for i, prod in enumerate(products):
-            qty = float(str(prod.get("qty", "0")).replace(",", ".") or 0)
-            unit_price = float(prices[i]) if i < len(prices) else 0.0
-            subtotal_excl += qty * unit_price
-        kdv_total = round(subtotal_excl * KDV_ORANI, 2)
-        grand_total = round(subtotal_excl + kdv_total, 2)
-    except Exception:
-        subtotal_excl = 0.0
-        kdv_total = 0.0
-        grand_total = float(req.get("toplam", 0.0) or 0.0)
-
-    # Eğer req["toplam"] varsa onu baz alalım
-    if isinstance(req.get("toplam"), (int, float)):
-        grand_total = float(req["toplam"])
-
-    totals_tbl = Table(
-        [
-            ["Ara Toplam (KDV Hariç):", fmt_money(subtotal_excl)],
-            [f"KDV (%{int(KDV_ORANI*100)}):", fmt_money(kdv_total)],
-            ["Genel Toplam:", fmt_money(grand_total)],
-        ],
-        colWidths=[7.2 * cm, 4.0 * cm],
-        hAlign="RIGHT",
-    )
-    totals_tbl.setStyle(TableStyle([
-        ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
-        ("FONTNAME", (0, 0), (-1, -2), 'DejaVuSans'),
-        ("FONTNAME", (0, -1), (-1, -1), 'DejaVuSans-Bold'),
-        ("TEXTCOLOR", (0, -1), (-1, -1), colors.black),
-        ("LINEABOVE", (0, -1), (-1, -1), 0.75, colors.black),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-    ]))
-    elements.append(totals_tbl)
-    elements.append(Spacer(1, 0.4 * cm))
-
-        # Teklif notu (varsa)
-    offer_note = (req.get("offer_note") or "").strip()
-    if offer_note:
-        elements.append(Paragraph("<b>Teklif Notu</b>", styles["Title"]))
-        elements.append(Paragraph(offer_note.replace("\n", "<br/>"), styles["Normal"]))
-        elements.append(Spacer(1, 0.3 * cm))
-
-    # Açıklamalar / Şartlar (BURASI if dışında olmalı!)
-    terms = (
-    f"<b>Açıklamalar / Şartlar:</b><br/>"
-    f"• Ödeme: {payment_term}<br/>"
-    f"• Teklif Geçerlilik Süresi: {offer_option}<br/>"
-    f"• Teslim: {delivery_time}<br/>"
-    f"• Fiyatlara kargo/kurulum dahil değildir.<br/>"
+    data,
+    colWidths=[0.9*cm, 4.5*cm, 2.0*cm, 2.2*cm, 1.4*cm, 2.8*cm, 2.4*cm, 2.2*cm, 2.4*cm],
+    hAlign="CENTER"
 )
+    table.setStyle(TableStyle([
+    ("FONTNAME", (0, 0), (-1, -1), "DejaVuSans"),
+    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+    ("ALIGN", (1, 1), (1, -1), "LEFT"),
+    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
+    ("FONTNAME", (0, 0), (-1, 0), "DejaVuSans-Bold"),
+    ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+    ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+    ("TOPPADDING", (0, 1), (-1, -1), 5),
+    ("BOTTOMPADDING", (0, 1), (-1, -1), 5),
+]))
+    elements += [table, Spacer(1, 0.4 * cm)]
 
-    elements.append(Paragraph(terms, styles["Normal"]))
-    elements.append(Spacer(1, 0.5 * cm))
 
+    # --------- TOTALS ----------
+    kdv_tutar = subtotal * KDV_ORANI
+    genel_toplam = subtotal + kdv_tutar
 
-    sign_tbl = Table(
-        [
-            [Paragraph("<b>Hazırlayan</b><br/><br/>İsim/İmza", styles["Normal"]),
-             Paragraph("<b>Onaylayan</b><br/><br/>İsim/İmza", styles["Normal"])]
-        ],
-        colWidths=[9.8 * cm, 9.8 * cm],
-    )
-    sign_tbl.setStyle(TableStyle([
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.lightgrey),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 12),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 18),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+    totals = Table([
+        [Paragraph("Ara Toplam (KDV Hariç):", cell_bold), Paragraph(fmt_money(subtotal), amt_right)],
+        [Paragraph(f"KDV (%{int(KDV_ORANI*100)}):", cell_bold), Paragraph(fmt_money(kdv_tutar), amt_right)],
+        [Paragraph("Genel Toplam:", cell_bold), Paragraph(fmt_money(genel_toplam), amt_right)],
+    ], colWidths=[8.0*cm, 4.0*cm], hAlign="RIGHT")
+    totals.setStyle(TableStyle([
+        ("ALIGN", (0,0), (-1,-1), "RIGHT"),
+        ("LINEABOVE", (0,2), (-1,2), 0.8, colors.black),  # sadece son satır üstü çizgi
+        ("FONTNAME", (0,2), (-1,2), "DejaVuSans-Bold"),
+        ("TOPPADDING", (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
     ]))
-    elements.append(sign_tbl)
+    elements += [totals, Spacer(1, 0.45*cm)]
 
-    # -------------------- PDF Oluştur --------------------
+    # --------- TERMS ----------
+    terms = (
+        "<b>Açıklamalar / Şartlar:</b><br/>"
+        f"• Ödeme: {payment_term}<br/>"
+        f"• Teklif Geçerlilik Süresi: {offer_option}<br/>"
+        f"• Teslim: {delivery_time_global}<br/>"
+        "• Fiyatlara kargo/kurulum dahil değildir.<br/>"
+    )
+    elements += [Paragraph(terms, styles["Normal"]), Spacer(1, 0.5*cm)]
+
+    # --------- SIGN ----------
+    sign = Table(
+        [[Paragraph("<b>Hazırlayan</b><br/><br/>İsim/İmza", styles["Normal"]),
+          Paragraph("<b>Onaylayan</b><br/><br/>İsim/İmza", styles["Normal"])]],
+        colWidths=[9.8*cm, 9.8*cm],
+    )
+    sign.setStyle(TableStyle([
+        ("BOX", (0,0), (-1,-1), 0.5, colors.lightgrey),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("TOPPADDING", (0,0), (-1,-1), 12),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 18),
+        ("LEFTPADDING", (0,0), (-1,-1), 8),
+        ("RIGHTPADDING", (0,0), (-1,-1), 8),
+    ]))
+    elements.append(sign)
+
+    # İlk teklif zamanı (sadece bir kez yaz)
+    if not req.get("offer_created_at"):
+        req["offer_created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # dosyaya yaz
+    with open("data/requests.json", "w", encoding="utf-8") as f:
+        json.dump(requests_data, f, ensure_ascii=False, indent=2)
+
+    # --------- BUILD PDF ----------
     doc.build(elements, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
 
-    # -------------------- Mail Gönderim (mevcut davranış korunur) --------------------
-    sender_email = "teklif@e-saltelektrik.com"
-    sender_password = "KampanyaXmail0217"
+    # --------- SEND MAIL ----------
+    smtp_host = os.getenv("SMTP_HOST", "mail.kurumsaleposta.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    sender_email = os.getenv("SMTP_USER")
+    sender_password = os.getenv("SMTP_PASS")
     to_email = req.get("email")
 
+    if not all([smtp_host, smtp_port, sender_email, sender_password]):
+        flash("⚠️ SMTP ayarları eksik (.env dosyasını kontrol edin)", "error")
+        return redirect(url_for("admin_dashboard"))
+
     msg = EmailMessage()
-    msg["Subject"] = "Yeni Teklifiniz Hazır"
+    msg["Subject"] = f"Yeni Teklifiniz - {COMPANY['name']}"
     msg["From"] = sender_email
     msg["To"] = to_email
-    msg.set_content("Merhaba,\n\nYeni teklifiniz ekte yer almaktadır.\nİyi çalışmalar dileriz.\n\nSalt Elektrik")
+    msg.set_content(
+        "Merhaba,\n\nYeni teklifiniz ekte yer almaktadır.\nİyi çalışmalar dileriz.\n\nŞalt Elektrik"
+    )
 
     with open(pdf_path, "rb") as f:
         msg.add_attachment(f.read(), maintype="application", subtype="pdf", filename=os.path.basename(pdf_path))
 
     try:
-        context = ssl._create_unverified_context()
-        with smtplib.SMTP("mail.kurumsaleposta.com", 587) as smtp:
-            smtp.starttls(context=context)
+        with smtplib.SMTP(smtp_host, smtp_port) as smtp:
+            smtp.starttls()
             smtp.login(sender_email, sender_password)
             smtp.send_message(msg)
             print(f"✅ Mail gönderildi: {to_email}")
@@ -1129,7 +1137,7 @@ def admin_offer_pdf(req_id):
         print("❌ Mail gönderim hatası:", e)
 
     flash("Teklif PDF oluşturuldu ve mail gönderildi.")
-    return redirect(url_for('static', filename=f"uploads/teklif_{req_id}.pdf"))
+    return redirect(url_for("static", filename=f"uploads/teklif_{req_id}.pdf"))
 
 
 # 📬 Mail listener başlatıcı fonksiyon
@@ -1145,6 +1153,25 @@ def run_mail_listener():
 
 # Arka planda mail listener’ı başlat
 run_mail_listener()
+@app.route("/search_stock", methods=["POST"])
+def search_stock():
+    data = request.get_json()
+    query = data.get("query", "").strip().lower()
+
+    if not query:
+        return jsonify({"error": "Ürün adı gerekli"}), 400
+
+    stock_file = "data/stock.json"
+    if not os.path.exists(stock_file):
+        return jsonify({"error": "Stok dosyası bulunamadı"}), 500
+
+    with open(stock_file, "r", encoding="utf-8") as f:
+        stock_data = json.load(f)
+
+    # Eğer stock.json bir listeyse:
+    matches = [item for item in stock_data if query in item["name"].lower()]
+
+    return jsonify({"results": matches})
 
 # Flask uygulamasını başlat
 if __name__ == "__main__":

@@ -1,5 +1,4 @@
 {% extends "client/base_client.html" %}
-
 {% block title %}Müşteri Paneli{% endblock %}
 
 {% block content %}
@@ -23,7 +22,15 @@
         </thead>
         <tbody id="product-rows">
           <tr class="border-t">
-            <td class="px-3 py-2"><input type="text" name="desc[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
+            <td class="px-3 py-2">
+              <div style="position: relative;">
+                <input type="text" name="desc[]" 
+                       class="input border-gray-300 rounded-lg w-full px-2 py-1"
+                       placeholder="Ürün"
+                       oninput="searchStock(this)">
+                <div class="stock-results"></div>
+              </div>
+            </td>
             <td class="px-3 py-2"><input type="text" name="code[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
             <td class="px-3 py-2"><input type="text" name="brand[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
             <td class="px-3 py-2"><input type="text" name="qty[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
@@ -64,14 +71,24 @@
   </form>
 </div>
 
-<!-- JS: Dinamik ürün satırı ekleme -->
+<!-- JS -->
 <script>
+/* ✅ ÜRÜN EKLEME FONKSİYONU */
 function addProductRow() {
   const tableBody = document.getElementById("product-rows");
   const newRow = document.createElement("tr");
   newRow.className = "border-t";
+
   newRow.innerHTML = `
-    <td class="px-3 py-2"><input type="text" name="desc[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
+    <td class="px-3 py-2">
+      <div style="position: relative;">
+        <input type="text" name="desc[]" 
+               class="input border-gray-300 rounded-lg w-full px-2 py-1"
+               placeholder="Ürün"
+               oninput="searchStock(this)">
+        <div class="stock-results"></div>
+      </div>
+    </td>
     <td class="px-3 py-2"><input type="text" name="code[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
     <td class="px-3 py-2"><input type="text" name="brand[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
     <td class="px-3 py-2"><input type="text" name="qty[]" class="input border-gray-300 rounded-lg w-full px-2 py-1" /></td>
@@ -81,6 +98,122 @@ function addProductRow() {
   `;
   tableBody.appendChild(newRow);
 }
+
+/* ✅ STOK ARAMA VE ÖNERİ */
+let searchTimeout;
+
+async function searchStock(inputEl) {
+  const query = inputEl.value.trim();
+  const resultDiv = inputEl.parentElement.querySelector('.stock-results');
+  clearTimeout(searchTimeout);
+
+  if (!query) {
+    hideDropdown(resultDiv);
+    return;
+  }
+
+  searchTimeout = setTimeout(async () => {
+    showLoading(resultDiv, inputEl);
+
+    try {
+      const res = await fetch("/search_stock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query })
+      });
+      const data = await res.json();
+      const results = Array.isArray(data.results) ? data.results : [];
+
+      if (!results.length) {
+        resultDiv.innerHTML = "<div class='p-2 text-gray-500'>Sonuç bulunamadı.</div>";
+        placeDropdown(inputEl, resultDiv);
+        return;
+      }
+
+      resultDiv.innerHTML = results.map(item => `
+        <div class="p-2 hover:bg-gray-100 cursor-pointer"
+             onclick="selectStock(this, '${(item.name || '').replace(/'/g, "\\'")}')">
+          ${item.name || ''}
+        </div>
+      `).join('');
+
+      placeDropdown(inputEl, resultDiv);
+    } catch (err) {
+      resultDiv.innerHTML = "<div class='p-2 text-red-500'>Hata oluştu.</div>";
+      placeDropdown(inputEl, resultDiv);
+    }
+  }, 250);
+}
+
+/* ✅ ÜRÜN SEÇİMİ */
+function selectStock(el, name) {
+  const dropdown = el.closest('.stock-results');
+  const inputSelector = dropdown?.dataset.forInput;
+  const input = inputSelector ? document.querySelector(inputSelector) : null;
+  if (input) input.value = name;
+  hideDropdown(dropdown);
+}
+
+/* ✅ YARDIMCI FONKSİYONLAR */
+function showLoading(resultDiv, inputEl) {
+  resultDiv.innerHTML = "<div class='p-2 text-gray-500'>Aranıyor...</div>";
+  placeDropdown(inputEl, resultDiv);
+}
+
+function placeDropdown(inputEl, resultDiv) {
+  const uniq = getOrSetInputId(inputEl);
+  resultDiv.dataset.forInput = `#${uniq}`;
+  Object.assign(resultDiv.style, {
+    position: 'fixed',
+    zIndex: '9999',
+    background: '#fff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '0.375rem',
+    boxShadow: '0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1)',
+    maxHeight: '240px',
+    overflowY: 'auto',
+    width: inputEl.getBoundingClientRect().width + 'px',
+    display: 'block'
+  });
+
+  const r = inputEl.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - r.bottom;
+  const minSpace = 160;
+
+  if (spaceBelow < minSpace) {
+    resultDiv.style.top = 'auto';
+    resultDiv.style.bottom = (window.innerHeight - r.top) + 'px';
+  } else {
+    resultDiv.style.bottom = 'auto';
+    resultDiv.style.top = r.bottom + 'px';
+  }
+  resultDiv.style.left = r.left + 'px';
+}
+
+function hideDropdown(resultDiv) {
+  if (!resultDiv) return;
+  resultDiv.innerHTML = '';
+  resultDiv.style.display = 'none';
+  resultDiv.removeAttribute('data-for-input');
+}
+
+function getOrSetInputId(inputEl) {
+  if (inputEl.id) return inputEl.id;
+  const id = 'desc_' + Math.random().toString(36).slice(2, 8);
+  inputEl.id = id;
+  return id;
+}
+
+/* ✅ LİSTEYİ KAPATMA DAVRANIŞLARI */
+document.addEventListener('click', (e) => {
+  document.querySelectorAll('.stock-results').forEach(list => {
+    const inputSelector = list.dataset.forInput;
+    const input = inputSelector ? document.querySelector(inputSelector) : null;
+    const clickedInsideList = list.contains(e.target);
+    const clickedInput = input && input.contains(e.target);
+    if (!clickedInsideList && !clickedInput) hideDropdown(list);
+  });
+}, true);
 </script>
 
 <!-- Geçmiş Talepler -->

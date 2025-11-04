@@ -60,8 +60,17 @@
   <td class="px-3 py-2"><input type="text" name="desc[]" value="{{ p.desc }}" class="border rounded px-2 py-1 w-full"></td>
   <td class="px-3 py-2"><input type="text" name="code[]" value="{{ p.code }}" class="border rounded px-2 py-1 w-full"></td>
   <td class="px-3 py-2"><input type="text" name="brand[]" value="{{ p.brand }}" class="border rounded px-2 py-1 w-full"></td>
-  <td class="px-3 py-2"><input type="text" name="qty[]" value="{{ p.qty }}" class="border rounded px-2 py-1 w-16 text-center"></td>
-
+  <td class="px-3 py-2">
+  <input 
+    type="number" 
+    min="0" 
+    step="0.01" 
+    name="qty[]" 
+    class="border rounded px-2 py-1 w-16 text-center" 
+    placeholder="0"
+    value="{{ p.qty or 0 }}"
+    oninput="updateTotals()">
+</td>
   <!-- 🟢 Yeni eklenen teslim süresi alanı -->
   <td class="px-3 py-2">
     <input
@@ -187,8 +196,14 @@ addBtn?.addEventListener('click', () => {
     <td class="px-3 py-2"><input type="text" name="desc[]" class="border rounded px-2 py-1 w-full" placeholder="Açıklama"></td>
     <td class="px-3 py-2"><input type="text" name="code[]" class="border rounded px-2 py-1 w-full" placeholder="Ürün Kodu"></td>
     <td class="px-3 py-2"><input type="text" name="brand[]" class="border rounded px-2 py-1 w-full" placeholder="Marka"></td>
-    <td class="px-3 py-2"><input type="text" name="qty[]" class="border rounded px-2 py-1 w-16 text-center" placeholder="Miktar"></td>
-    <td class="px-3 py-2 text-right"><input type="number" min="0" step="0.01" name="price[]" class="border rounded px-2 py-1 w-24 text-right" placeholder="0.00" oninput="updateTotals()"></td>
+    <td class="px-3 py-2"><input type="number" min="0" step="0.01" name="qty[]" class="border rounded px-2 py-1 w-16 text-center" placeholder="0" oninput="updateTotals()"></td>
+    <!-- 🟢 Teslim Süresi sütunu -->
+    <td class="px-3 py-2">
+      <input type="text" name="delivery_time[]" class="border rounded px-2 py-1 text-sm w-full" placeholder="örnek: 3-5 gün">
+    </td>
+    <td class="px-3 py-2 text-right">
+      <input type="number" min="0" step="0.01" name="price[]" class="border rounded px-2 py-1 w-24 text-right" placeholder="0.00" oninput="updateTotals()">
+    </td>
     <td class="px-3 py-2 text-right kdv-cell">0.00</td>
     <td class="px-3 py-2 text-right subtotal-cell">0.00</td>
     <td class="px-3 py-2 text-center"><button type="button" data-row-delete class="text-red-600 hover:text-red-800">✕</button></td>

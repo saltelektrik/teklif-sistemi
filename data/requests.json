@@ -1,5 +1,361 @@
 [
   {
+    "id": 3,
+    "name": "Müşteri",
+    "email": "client@saltelektrik.com",
+    "timestamp": "2025-11-04 11:07:46",
+    "request_messages": [
+      {
+        "sender": "müşteri",
+        "sender_name": "Müşteri",
+        "text": "testing",
+        "time": "2025-11-04 11:07:46",
+        "file": "/static/uploads/deneme.jpg"
+      }
+    ],
+    "offer_messages": [
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Yeni teklif hazırlandı. Toplam: 40.80 ₺\n",
+        "file": "/static/uploads/Yeni_Metin_Belgesi.txt",
+        "time": "2025-11-04 11:09:03"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 40.80 ₺\n",
+        "file": null,
+        "time": "2025-11-04 14:12:13"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 40.80 ₺\n",
+        "file": null,
+        "time": "2025-11-04 14:13:00"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 40.80 ₺\n",
+        "file": null,
+        "time": "2025-11-04 14:13:58"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 15.60 ₺\n",
+        "file": null,
+        "time": "2025-11-04 14:15:11"
+      }
+    ],
+    "status": "Cevaplandı",
+    "products": [
+      {
+        "desc": "gerçek11V11GEREMRQWKQKWGEJMKGKFMSDF",
+        "code": "deneme",
+        "brand": "123",
+        "qty": "1",
+        "delivery_time": "2 gün"
+      }
+    ],
+    "payment_term": "Peşin",
+    "delivery_time": "Stokta (hemen teslim)",
+    "offer_option": "7 Gün",
+    "response_minutes": 1,
+    "prices": [
+      13.0
+    ],
+    "kdv_dahil": [
+      15.6
+    ],
+    "ara_toplamlar": [
+      15.6
+    ],
+    "toplam": 15.6,
+    "offer_note": "",
+    "offer_created_at": "2025-11-04 11:09:03",
+    "assigned_admin": "Abdulselam",
+    "messages": []
+  },
+  {
+    "id": 4,
+    "name": "Müşteri",
+    "email": "client@saltelektrik.com",
+    "timestamp": "2025-11-04 11:13:05",
+    "request_messages": [
+      {
+        "sender": "müşteri",
+        "sender_name": "Müşteri",
+        "text": "qwe",
+        "time": "2025-11-04 11:13:05",
+        "file": null
+      }
+    ],
+    "offer_messages": [
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Yeni teklif hazırlandı. Toplam: 147.60 ₺\ntmm",
+        "file": null,
+        "time": "2025-11-04 11:13:28"
+      }
+    ],
+    "status": "Teklif Hazır",
+    "products": [
+      {
+        "desc": "q",
+        "code": "q",
+        "brand": "q",
+        "qty": "123",
+        "delivery_time": "2 gün"
+      }
+    ],
+    "assigned_admin": "Mehmet",
+    "response_minutes": 0,
+    "payment_term": "Peşin",
+    "offer_option": "7 Gün",
+    "prices": [
+      1.0
+    ],
+    "kdv_dahil": [
+      1.2
+    ],
+    "ara_toplamlar": [
+      147.6
+    ],
+    "toplam": 147.6,
+    "offer_note": "tmm",
+    "offer_created_at": "2025-11-04 11:13:28",
+    "messages": []
+  },
+  {
+    "id": 5,
+    "name": "Müşteri",
+    "email": "client@saltelektrik.com",
+    "timestamp": "2025-11-04 11:23:35",
+    "request_messages": [
+      {
+        "sender": "müşteri",
+        "sender_name": "Müşteri",
+        "text": "qq",
+        "time": "2025-11-04 11:23:35",
+        "file": null
+      }
+    ],
+    "offer_messages": [
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Yeni teklif hazırlandı. Toplam: 13.20 ₺\n",
+        "file": null,
+        "time": "2025-11-04 14:06:45"
+      }
+    ],
+    "status": "Teklif Hazır",
+    "products": [
+      {
+        "desc": "q",
+        "code": "q",
+        "brand": "q",
+        "qty": "1",
+        "delivery_time": "2 gün"
+      }
+    ],
+    "response_minutes": 163,
+    "payment_term": "Peşin",
+    "offer_option": "7 Gün",
+    "prices": [
+      11.0
+    ],
+    "kdv_dahil": [
+      13.2
+    ],
+    "ara_toplamlar": [
+      13.2
+    ],
+    "toplam": 13.2,
+    "offer_note": "",
+    "offer_created_at": "2025-11-04 14:06:45",
+    "messages": []
+  },
+  {
+    "id": 1762235339094,
+    "uid": "38",
+    "msg_id": "<00a901dc4d4e$97679c90$c636d5b0$@saltelektrik.com>",
+    "name": "<kampanya@saltelektrik.com>",
+    "email": "<kampanya@saltelektrik.com>",
+    "timestamp": "2025-11-04 08:48:59",
+    "products": [
+      {
+        "desc": "qwe",
+        "code": "qwe",
+        "brand": "qwe",
+        "qty": "",
+        "delivery_time": "2 gün"
+      },
+      {
+        "desc": "qwe",
+        "code": "qe",
+        "brand": "qwewqe",
+        "qty": "",
+        "delivery_time": "123"
+      },
+      {
+        "desc": "qwe",
+        "code": "qwe",
+        "brand": "qwe",
+        "qty": "",
+        "delivery_time": "2"
+      }
+    ],
+    "status": "Cevaplandı",
+    "request_messages": [
+      {
+        "sender": "müşteri",
+        "sender_name": "<kampanya@saltelektrik.com>",
+        "text": "📧 E-posta konusu: FW: teklif ver\n\nFrom: kampanya@saltelektrik.com <kampanya@saltelektrik.com> \r\nSent: Saturday, November 1, 2025 11:47 AM\r\nTo: 'teklif@e-saltelektrik.com' <teklif@e-saltelektrik.com>\r\nSubject: teklif ver\r\n\r\n \r\n\r\nTeklif ver",
+        "file": "/static/uploads/mail_attachments/Sorular.xlsx",
+        "attachments": [
+          "/static/uploads/mail_attachments/Sorular.xlsx"
+        ],
+        "time": "2025-11-04 08:48:59"
+      }
+    ],
+    "offer_messages": [
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Yeni teklif hazırlandı. Toplam: 1.20 ₺\n",
+        "file": null,
+        "time": "2025-11-04 08:49:15"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 1.20 ₺\n",
+        "file": null,
+        "time": "2025-11-04 08:49:30"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 1.20 ₺\n",
+        "file": null,
+        "time": "2025-11-04 09:25:33"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 1.20 ₺\n",
+        "file": null,
+        "time": "2025-11-04 10:30:52"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 2.40 ₺\n",
+        "file": null,
+        "time": "2025-11-04 10:30:57"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 15.72 ₺\n",
+        "file": null,
+        "time": "2025-11-04 10:43:10"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 0.00 ₺\n",
+        "file": null,
+        "time": "2025-11-04 11:05:51"
+      }
+    ],
+    "payment_term": "Peşin",
+    "offer_option": "7 Gün",
+    "prices": [
+      1.1,
+      1.0,
+      11.0
+    ],
+    "kdv_dahil": [
+      1.32,
+      1.2,
+      13.2
+    ],
+    "ara_toplamlar": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "toplam": 0.0,
+    "offer_note": "",
+    "assigned_admin": "Abdurrahman",
+    "messages": [],
+    "response_minutes": 136,
+    "offer_created_at": "2025-11-04 11:05:55"
+  },
+  {
+    "id": 6,
+    "name": "Müşteri",
+    "email": "client@saltelektrik.com",
+    "timestamp": "2025-11-04 11:23:38",
+    "request_messages": [
+      {
+        "sender": "müşteri",
+        "sender_name": "Müşteri",
+        "text": "w",
+        "time": "2025-11-04 11:23:38",
+        "file": null
+      }
+    ],
+    "offer_messages": [
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Yeni teklif hazırlandı. Toplam: 26.40 ₺\n",
+        "file": null,
+        "time": "2025-11-04 11:24:03"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 26.40 ₺\n",
+        "file": null,
+        "time": "2025-11-04 11:24:05"
+      }
+    ],
+    "status": "Cevaplandı",
+    "products": [
+      {
+        "desc": "w",
+        "code": "w",
+        "brand": "w",
+        "qty": "22",
+        "delivery_time": "2 gün"
+      }
+    ],
+    "response_minutes": 0,
+    "payment_term": "Peşin",
+    "offer_option": "7 Gün",
+    "prices": [
+      1.0
+    ],
+    "kdv_dahil": [
+      1.2
+    ],
+    "ara_toplamlar": [
+      26.4
+    ],
+    "toplam": 26.4,
+    "offer_note": "",
+    "offer_created_at": "2025-11-04 11:24:03",
+    "messages": []
+  },
+  {
     "id": 1,
     "name": "Furkan Kıvrak",
     "email": "furkan@saltelektrik.com",
@@ -97,19 +453,40 @@
         "text": "Teklif revize edildi. Toplam: 15.60 ₺\nDÜŞTÜ",
         "file": null,
         "time": "2025-11-03 17:03:04"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 15.60 ₺\nDÜŞTÜ",
+        "file": null,
+        "time": "2025-11-04 08:47:29"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 171.60 ₺\nDÜŞTÜ",
+        "file": null,
+        "time": "2025-11-04 10:48:59"
+      },
+      {
+        "sender": "yönetici",
+        "sender_name": "Mehmet",
+        "text": "Teklif revize edildi. Toplam: 0.00 ₺\nDÜŞTÜ",
+        "file": null,
+        "time": "2025-11-04 11:05:13"
       }
     ],
-    "status": "Cevaplandı",
+    "status": "Kapalı",
     "products": [
       {
         "desc": "qwe",
         "code": "qwe",
         "brand": "qwe",
-        "qty": "1",
+        "qty": "",
         "delivery_time": "2 gün"
       }
     ],
-    "payment_term": "Peşin",
+    "payment_term": "90 Gün",
     "delivery_time": "Stokta (hemen teslim)",
     "offer_option": "7 Gün",
     "prices": [
@@ -119,10 +496,38 @@
       15.6
     ],
     "ara_toplamlar": [
-      15.6
+      0.0
     ],
-    "toplam": 15.6,
+    "toplam": 0.0,
     "offer_note": "DÜŞTÜ",
-    "assigned_admin": "Mehmet"
+    "assigned_admin": "Mehmet",
+    "messages": [],
+    "response_minutes": 1204,
+    "offer_created_at": "2025-11-04 11:05:17"
+  },
+  {
+    "id": 7,
+    "name": "Müşteri",
+    "email": "client@saltelektrik.com",
+    "timestamp": "2025-11-04 16:02:33",
+    "request_messages": [
+      {
+        "sender": "müşteri",
+        "sender_name": "Müşteri",
+        "text": "",
+        "time": "2025-11-04 16:02:33",
+        "file": null
+      }
+    ],
+    "offer_messages": [],
+    "status": "new",
+    "products": [
+      {
+        "desc": "buton",
+        "code": "qweqwe",
+        "brand": "",
+        "qty": ""
+      }
+    ]
   }
 ]
